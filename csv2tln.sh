@@ -4,7 +4,6 @@
 [ -f "$1" ] || echo "Usage: csv2tln.sh [TLN CSV File]"
 [ -f "$1" ] && cat $1  | while read d; 
 do
- #echo $d
  timestamp=$(echo $d| awk -F',' '{print $1}'| cut -c -19)
  tlntime=$(date -d "$timestamp"  +"%s" 2>/dev/null)
  tlninfo=$(echo $d| awk -F',' '{print "|"$2"|"$3"|"$4"|"$5}')  
