@@ -1,0 +1,139 @@
+*********************************************
+** WINDOWS EVENTLOG QUICK REFERENCE (EVTX) **
+*********************************************
+
+https://www.ultimatewindowssecurity.com/ 
+https :// staticl.squarespace.com/static/552092d5e4 b0661088167e5c/t/580595db9f745688be7477f6/147676107 
+http ://www. deer-run.com/~hal/IREventLogAnalysis.pdf 
+https://github.com/dchad/fineline-computer-forensics-timeline-tools 
+https://www.mindmeister.com/841877457/event-log 
+http://www.redblue.team/2015/09/spotting-adversary-with-windows-event.html 
+http://www.redblue.team/2015/09/spotting-adversary-with-windows-event_21.html 
+http://kb.eventtracker.com/evtpass/evtbksearch_result.asp 
+http://www.eventid.net/ 
+https://github.com/iadgov/Event-Forwarding-Guidance/blob/master/Events/RecommendedEvents.csv
+
+*******************
+** SECURITY EVTX **
+*******************
+FILE, NETWORK OR LOG CLEARING EVENTS
+1102 - Log Clearing 
+4688 - Process Created (Program Execution) 
+4656 - Access to File or Other Object Requested 
+4663 - Attempt made to access a file or object 
+4658 - Access to a File or object closed 
+4697 - New Service has been Installed 
+4782 - Password Hash of an Account has been Accessed 
+5140 - Network Share Accessed 
+LOGIN EVENTS 
+4624 - Network logon 
+4625 - Login Failed 
+4634 - Logoff 
+4648 - Attempted Login 
+4672 - Administrator has Logged in 
+4776 - Credential Authentication (Success/Fail) 
+4778 - Session Reconnect (RDP or FastUser Switch) 
+4770 - Kerberos Ticket Renewed 
+4793 - Password Policy Checking API called 
+CHANGE TO ACCOUNT OR ACCOUNT STATUS EVENTS
+4704 - User Right Assigned 
+4720 - New User Account Created 
+4722 - New User Account Enabled 
+4725 - User Account Disabled 
+4726 - User Account Deleted 
+4728 - Member Added to Global Group 
+4731- Security-enabled Group Created 
+4732 - Member Added to local Group 
+4733 - Account removed from Local Sec. Group 
+4765 - SID History added to Account 
+4634 - Local Group Deleted 
+4735 - Local Group Changed 
+4740 - Account Locked out 
+4748 - Local Group Deleted 
+4756 - Member Added to Universal Group 
+4766 - SID History add attempted on Account 
+4767 - User Account Unlocked 
+4781 - Account Name Changed 
+CHANGES TO FIREWALL
+4946 - Firewall Rule has been Added 
+4947 - Firewall Rule has been Modified 
+4948 - Firewall Rule has been Deleted 
+4950 - Firewall Rule has been Changed 
+
+**********************
+** APPLICATION.EVTX **
+**********************
+865 - GPO Blocked - Exe Default Security Level 
+866 - GPO Blocked exe - Restricted Path 
+867 - GPO Blocked Exe - Certificate rule 
+868 - GPO Blocked Exe - zone or hash rule 
+882 - GPO Blocke Exe by Policy Rule 
+1000 - Application Error 1001 - WER Info 
+1001 - EMET !=Warning 2=Error 
+1002 - Application Hang Software Policy Events 
+
+*******************
+** SYSTEM.EVTX **
+******************* 
+1074 - System Halt 
+7000 - Service failed to start: did not respond to the start control request 
+7022 - Service hung on start
+7023 - Service terminated with error 
+7024 - Service terminated with error 
+7026 - Service failed on system start 
+7031 - Service terminated unexpectedly 
+7034 - Service terminated unexpectedly
+7035 - Service sent a request to Stop or Start
+7036 - Service was Started or Stopped 
+7045 - service Installed 
+7040 - Service changed from "auto start" to "disabled" 
+
+************************************************
+** Microsoft-Windows-TaskScheduler%4Operational.evtx **
+************************************************
+106 - Task scheduled 
+200 - Task executed 
+201 - Task completed 
+202 - Task Failed to complete 
+140 - Task Updated 
+141 - Task Deleted 
+142 - Task Disabled 
+145 - Computer woke up by TaskScheduler 
+300 - Task Scheduler Started 
+400 - Task Scheduler Service Started 
+
+****************************************************
+** MICROSOFT-WINDOWS-WINDOWS DEFENDER/OPERATIONAL **
+****************************************************
+1005 - Scan Failed 
+1006 - Malware Detected 
+1008 - Action on Malware Failed 
+2000 - Signature Updated 
+2001 - Signature Update Failed 
+2003 - Engine Update Failed 
+2004 - Reverting to Last Known Gadd Signatures 
+3001- Real-Time Protection Stopped 
+5008 - Unexpected Error 
+
+*************************************************************
+** Microsoft-Windows-TerminalServices-RemoteConnectionManager.EVTX **
+*************************************************************
+261 - Terminal Service Received Connection 
+1006 - Large Number of Connection Attempts 
+1149 - User authenticated 
+
+********************************************************
+** Microsoft-Windows-TerminalServices-LocalSessionManager.EVTX **
+********************************************************
+21 - logon success 
+23 - logoff 
+24 - disconnect 
+
+**********************************
+** PtH Detection for lateral movement: **
+**********************************
+Event ID: 4624 
+Event level: Information
+LogonType: 3 
+logon method NTLM
+A local logon that is not ANONYMOUS
