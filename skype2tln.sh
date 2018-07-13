@@ -20,5 +20,5 @@ function parse_maindb(){
 type sqlite3 &>/dev/null || echo "usage: skype2tln.sh [path to main.db] -e (epoch)"
 input_path=$1
 epoch=$2
-[ "$2" == "-e" ] && parse_maindb|sort -rn
-[ "$2" != "-e" ] && parse_maindb|awk -F'|' '{$1=strftime("%Y-%m-%d %H:%M:%S",$1)}{print $1","$2","$3","$4","$5}'|sort -rn
+[ "$epoch" == "-e" ] && parse_maindb|sort -rn
+[ "$epoch" != "-e" ] && parse_maindb|awk -F'|' '{$1=strftime("%Y-%m-%d %H:%M:%S",$1)}{print $1","$2","$3","$4","$5}'|sort -rn
