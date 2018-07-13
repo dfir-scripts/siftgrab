@@ -17,7 +17,7 @@ function parse_maindb(){
   #File Transfer
   sqlite3 file:$input_path 'select starttime, filepath,bytestransferred,partner_dispname from Transfers' 2>/dev/null|awk -F'|' '{print $1"|SKYPE||FILE TRANSFER:" $2}'|sed 's|^\||0\||' 
 }
-type sqlite3 &>/dev/null && parse_maindb || echo "usage: skype2tln.sh [path to main.db] -e (epoch)"
+type sqlite3 &>/dev/null || echo "usage: skype2tln.sh [path to main.db] -e (epoch)"
 input_path=$1
 epoch=$2
 [ "$2" == "-e" ] && parse_maindb|sort -rn
