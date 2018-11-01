@@ -49,15 +49,17 @@ directories with parent folder named "cases"<br><br>
  
  <li><b>There are also individual scripts to perform specific tasks</li><br></b>
    
- ads2tln.sh       Lists Alternate Data Streams on a mounted NTFS Volume<br> 
- chrome2tln.sh    Extracts Chrome History, downloads and cookies<br>
- ermount.sh       Mounts an E01 or raw image using ewfmount<br>
- filegrab.sh      Creates an image excerpt from a mounted Windows disk image<br>
- firefox2tln.sh   Extract FireFox History, Downloads,cookies<br> 
- recbin2tln.sh    Extracts metadata from the recycle bin "$I" files<br>
- skype2tln.sh     Extracts Skype Logs<br>
- tln2csv.sh       Converts a TLN file to CSV with human readable timestamps<br> 
- csv2tln.sh       Converts a five columnar CSV timeline file to TLN<br>
- rip.pl2linux     Changes and then copies original rip.pl (Rip v.2.8_20180406) to rip.new<br>
+ <b>ntuser2tln.sh</b>    Runs RegRipper's "TLN" plugins on ntuser files and outputs TLN file with computername and user name<br>
+ <b>regrip2tln.sh</b>    Runs RegRipper's "TLN" plugins on registry hives and outputs TLN file with computername<br>
+ <b>ads2tln.sh</b>       Lists Alternate Data Streams on a mounted NTFS Volume<br> 
+ <b>chrome2tln.sh</b>    Extracts Chrome History, downloads and cookies<br>
+ <b>ermount.sh</b>       Mounts an E01 or raw image using ewfmount<br>
+ <b>filegrab.sh</b>      Creates an image excerpt from a mounted Windows disk image<br>
+ <b>firefox2tln.sh</b>   Extract FireFox History, Downloads,cookies<br> 
+ <b>recbin2tln.sh</b>    Extracts metadata from the recycle bin "$I" files<br>
+ <b>skype2tln.sh</b>     Extracts Skype Logs<br>
+ <b>tln2csv.sh</b>       Converts a TLN file to CSV with human readable timestamps<br> 
+ <b>csv2tln.sh</b>       Converts a five columnar CSV timeline file to TLN<br>
+ <b>rip.pl2linux</b>     Changes and then copies original rip.pl (Rip v.2.8_20180406) to rip.new<br>
                   Then replace old version of rip.pl( e.g. cp rip.new /usr/local/bin/rip.pl && cp rip.new /usr/share/regripper/rip.pl)<br>
- rip.new          Latest rip.pl (v.2.8_20180406) modified for use in SANS Sift<br> 
+ <b>rip.new</b>          Latest rip.pl (v.2.8_20180406) modified for use in SANS Sift<br> 
