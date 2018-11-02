@@ -1,5 +1,4 @@
 #!/usr/bin/perl
-#!/usr/bin/perl
 use lib qw(/usr/lib/perl5/);
 #-------------------------------------------------------------------------
 # Rip - RegRipper, CLI version
