@@ -51,7 +51,7 @@ directories with parent folder named "cases"<br><br>
    
  <b>ntuser2tln.sh</b>    Runs RegRipper's "TLN" plugins on ntuser files and outputs TLN file with computername and user name<br>
  <b>regrip2tln.sh</b>    Runs RegRipper's "TLN" plugins on registry hives and outputs TLN file with computername<br>
- <b>ads2tln.sh</b>       Lists Alternate Data Streams on a mounted NTFS Volume<br> 
+ <b>ads2tln.sh</b>       Lists Alternate Data Streams and associated crtimes on a mounted NTFS Volume<br> 
  <b>objidinfo.sh</b>     Extracts NTFS ObjectIDs, timestamps and dos names from files on mounted NTFS Volumes<br> 
  <b>chrome2tln.sh</b>    Extracts Chrome History, downloads and cookies<br>
  <b>ermount.sh</b>       Mounts an E01 or raw image using ewfmount<br>
