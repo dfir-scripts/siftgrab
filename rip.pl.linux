@@ -59,13 +59,13 @@ my $str = $0;
 $str =~ s/($path[scalar(@path) - 1])//;
 
 # Suggested addition by Hal Pomeranz for compatibility with Linux
-#push(@INC,$str);
+push(@INC,$str);
 # code updated 20190318
-my $plugindir = '/usr/share/regripper/plugins/';
+my $plugindir;  
 ($^O eq "MSWin32") ? ($plugindir = $str."plugins/")
                    : ($plugindir = File::Spec->catfile("plugins"));
-#my $plugindir = $str."plugins/";
-#my $plugindir = File::Spec->catfile("plugins");
+my $plugindir = $str."/usr/share/regripper/plugins/";
+my $plugindir = File::Spec->catfile("/usr/share/regripper/plugins/");
 #print "Plugins Dir = ".$plugindir."\n";
 # End code update
 my $VERSION = "2\.8_20190318";
