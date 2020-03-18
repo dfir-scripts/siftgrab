@@ -15,12 +15,15 @@ echo "rip.pl-2linux.sh"
 sed -i '/^#! c:[\]perl[\]bin[\]perl.exe/d' rip.pl.linux
 sed -i "1i #!`which perl`" rip.pl.linux
 sed -i '2i use lib qw(/usr/lib/perl5/);' rip.pl.linux
-# Hard code plugindir path to /usr/share/regripper/plugins/ 
-sed -i "s|^my\ \$plugindir.*|my\ \$plugindir \= '/usr/share/regripper/plugins/';|" rip.pl.linux
+sed -i 's/\#push/push/' rip.pl.linux
+sed -i 's/\#my\ \$plugindir/\my\ \$plugindir/g' rip.pl.linux
+sed -i 's/\"plugins\/\"\;/\"\/usr\/share\/regripper\/plugins\/\"\;/' rip.pl.linux
+sed -i 's/(\"plugins\")\;/(\"\/usr\/share\/regripper\/plugins\")\;/' rip.pl.linux
+
 [ -e rip.pl.linux ] && echo "rip.pl.linux file created!" && md5sum rip.pl.linux
 echo -e "replace original rip.pl with new file rip.pl.linux
 
-Back up and make sure the followinf files are updated:
+Back up and make sure the following files are updated:
 /usr/local/bin/shellitems.pl
 /usr/local/bin/time.pl
 /usr/share/perl5/Parse/Win32Registry/WinNT/File.pm
