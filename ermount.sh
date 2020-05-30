@@ -1,6 +1,6 @@
 #!/bin/bash
-# Every ready mount disk:
-# Mounts disk images (E01,vmdk, vdi and Raw) in a linux evnironment using ewf_mount,qemu-ndb, affuse and mount 
+# Every ready disk mount disk utility:
+# Mounts disk images (E01,vmdk, vdi, vmdk and Raw) in a linux evnironment using ewf_mount,qemu-ndb, affuse and mount 
 # WARNING:  Forcefully disconnects and remounts images and network block devices! 
 # Mounts everything in /tmp/ 
 #Intended for use in a lab or forensic environment only
@@ -31,7 +31,7 @@ function yes-no(){
 
 # Report mount status
 mount_status(){
-     mount_stat=$(echo " /tmp/dfir_mount/" && [ "$(ls -A /tmp/dfir_mount/ 2>/dev/null)" ] && makegreen " Mounted" || makered " Not Mounted" )
+     mount_stat=$(echo " /tmp/ermount/" && [ "$(ls -A /tmp/ermount/ 2>/dev/null)" ] && makegreen " Mounted" || makered " Not Mounted" )
      ewf_stat=$(echo " /tmp/ewf/ewf1" && [ "$(ls -A /tmp/ewf/ 2>/dev/null)" ] && makegreen " Mounted"  || makered " Not Mounted")
      aff_stat=$(echo " /tmp/aff/" && [ "$(ls -A /tmp/aff/ 2>/dev/null)" ] && makegreen " Mounted"  || makered " Not Mounted")
      nbd_stat=$(echo " /dev/nbd1/" && [ "$(ls /dev/nbd1 2>/dev/null)" ] && makegreen " Active"  || makered " Inactive")
@@ -68,7 +68,7 @@ function mount_point(){
       echo ""
       makered "SET MOUNT POINT"
       echo "Set Path or Enter to Accept Default:"
-      read -e -p "" -i "/tmp/irmount" mount_dir
+      read -e -p "" -i "/tmp/ermount" mount_dir
       mkdir -p $mount_dir
       [ "$(ls -A $mount_dir)" ] && umount $mount_dir -f -A
       [ "$(ls -A $mount_dir)" ] && echo "$mount_dir busy, try different mount point or reboot" && sleep 2 && exit
@@ -169,7 +169,7 @@ function mount_vss(){
 ######### UNMOUNT IMAGES ###################
 ############################################
 function umount_all(){
-      [ "$(ls -A /tmp/irmount)" ] && umount /tmp/irmount -f -A
+      [ "$(ls -A /tmp/ermount)" ] && umount /tmp/ermount -f -A
       [ "$(ls -A /tmp/ewf/)" ] && umount /tmp/ewf/ -f -A 
       qemu-nbd -d /dev/nbd1 2>/dev/null
       rmmod nbd 2>/dev/null && echo "Warning: unloading Network Block Device"
@@ -200,7 +200,7 @@ clear
 mkdir -p /tmp/ewf 2>/dev/null  
 mkdir -p /tmp/aff 2>/dev/null
 mkdir -p /tmp/vss 2>/dev/null     
-[ "${1}" == "-u" ] && mount_status && mount_dir="/tmp/irmount" && umount_all
+[ "${1}" == "-u" ] && mount_status && mount_dir="/tmp/ermount" && umount_all
 [ "${1}" == "-u" ] && echo $mount_stat && echo $ewf_stat && echo $aff_stat && echo $nbd_stat && echo $vss_stat && echo $vsc_stat && exit
 makegreen "Mount a disk image or Virtual Machine disk"
 mount_status
@@ -210,7 +210,7 @@ mount_point
 
 [ -f $image_name"002" ] &&  echo $multi "Multiple raw disk segments detected, mounting with affuse" && mount_aff
 echo $image_type | grep -e "E01$" && echo $multi "EWF detected, mount with ewfmount" && mount_e01
-echo $image_type | grep -e "VMDK$\|VDI$\QCOW2$" && mount_nbd
+echo $image_type | grep -e "VMDK$\|VDI$\|QCOW2$\VMDK$\|VMDKX" && mount_nbd
 [ "$image_src" == "" ] && image_src="${ipath}"
 
 file $multi
