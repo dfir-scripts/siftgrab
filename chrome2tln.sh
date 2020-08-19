@@ -13,7 +13,7 @@ sqlite3 History "select (start_time/1000000-11644473600), url, target_path, tota
 sqlite3 Cookies "select (cookies.creation_utc/1000000-11644473600), cookies.host_key,cookies.path, cookies.name, datetime(cookies.last_access_utc/1000000-11644473600,'unixepoch','utc'), cookies.value FROM cookies" 2>/dev/null|awk -F'|' '{print $1"|chrome|||[Cookie]:"$2" |LASTACCESS: "$5" |VALUE: "$4}' 
 }
 
-type sqlite3 &>/dev/null || echo "usage: chrome2tln.sh [path to main.db] -e (epoch)"
+type sqlite3 &>/dev/null || echo "usage: chrome2tln.sh [path to Chrome Profile Folder] -e (epoch)"
 input_path=$1
 cd "$input_path"
 epoch=$2
