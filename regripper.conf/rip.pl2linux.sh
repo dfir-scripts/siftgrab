@@ -1,7 +1,8 @@
 #!/bin/bash
-# Makes changes to Regripper's rip.pl so it will run on SANS Sift and possibly non-windows platforms.  Sets a static plugin path, so it can be changed as needed.
+# Makes changes to Regripper's rip.pl so it will run on SANS Sift and possibly non-windows platforms.  
+#Sets a static plugin path, so it can be changed as needed.
 
-# https://github.com/keydet89/RegRipper2.8
+# https://github.com/keydet89/RegRipper3.0
 # https://linuxconfig.org/how-to-install-regripper-registry-data-extraction-tool-on-linux  
 #
 # usage: rip.pl2linux.sh (Make sure original rip.pl in current path)
@@ -23,9 +24,12 @@ sed -i 's/(\"plugins\")\;/(\"\/usr\/share\/regripper\/plugins\")\;/' rip.pl.linu
 [ -e rip.pl.linux ] && echo "rip.pl.linux file created!" && md5sum rip.pl.linux
 echo -e "replace original rip.pl with new file rip.pl.linux
 
+See RegRipper's readme file
 Back up and make sure the following files are updated:
-/usr/local/bin/shellitems.pl
-/usr/local/bin/time.pl
+/usr/local/bin/shellitems.pl  # RR 2.8 only
+/usr/local/bin/time.pl  # RR 2.8 only
 /usr/share/perl5/Parse/Win32Registry/WinNT/File.pm
 /usr/share/perl5/Parse/Win32Registry/WinNT/Key.pm
-/usr/share/perl5/Parse/Win32Registry/Base.pm"
+/usr/share/perl5/Parse/Win32Registry/Base.pm
+
+Plugin path set to /usr/share/regripper/plugins"
