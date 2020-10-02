@@ -10,7 +10,6 @@ find $1/\$Recycle.Bin -type f 2>/dev/null|grep "\/\$I"|sed 's|^\./||'|while read
     size=$(echo $(($hexsize)))
     hexdate0=$(cat "$d" |xxd -s16 -l8 -ps| awk '{gsub(/.{2}/,"& ")}1'|awk '{for(i=NF;i>0;i--)printf "%s",$i}'&& echo "")
     hexdate1=$(echo $((0x$hexdate0/10000000)))
-    echo $hexdate1
     epoch=$(echo $(($hexdate1-11644473600)))
     date=$(date -d @$epoch +"%Y-%m-%d %H:%M:%S")
     [ "$2" == "-c" ] && echo "$date,Recycle,,,[Deleted] "$name  "FILESIZE:$size"
