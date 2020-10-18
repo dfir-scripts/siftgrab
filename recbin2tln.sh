@@ -8,7 +8,7 @@ find $1/\$Recycle.Bin -type f 2>/dev/null|grep "\/\$I"|sed 's|^\./||'|while read
     name=${name#*$1/}
     hexsize=$(cat "$d"|xxd -s8 -l8 -ps|sed -e 's/[0]*$//g'|awk '{print "0x"$0}')
     size=$(echo $(($hexsize)))
-    hexdate0=$(cat "$d" |xxd -s16 -l8 -ps| awk '{gsub(/.{2}/,"& ")}1'|awk '{for(i=NF;i>0;i--)printf "%s",$i}'&& echo "")
+    hexdate0=$(cat "$d" |xxd -s16 -l8 -ps|grep -o .. |tac| tr -d '\n')
     hexdate1=$(echo $((0x$hexdate0/10000000)))
     epoch=$(echo $(($hexdate1-11644473600)))
     date=$(date -d @$epoch +"%Y-%m-%d %H:%M:%S")
