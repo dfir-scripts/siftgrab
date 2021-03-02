@@ -120,12 +120,12 @@ git clone https://github.com/volatilityfoundation/volatility3.git /usr/local/src
 chmod 755  /usr/local/src/volatility/*.py
 
 #Download Volatility3 Symbol Files
-wget -O /usr/local/src/volatility/volatility3/windows.zip https://downloads.volatilityfoundation.org/volatility3/symbols/windows.zip
-wget -O /usr/local/src/volatility/volatility3/mac.zip https://downloads.volatilityfoundation.org/volatility3/symbols/mac.zip
-wget -O /usr/local/src/volatility/volatility3/linux.zip https://downloads.volatilityfoundation.org/volatility3/symbols/linux.zip
+wget -O /usr/local/src/volatility/volatility3/symbols/windows.zip https://downloads.volatilityfoundation.org/volatility3/symbols/windows.zip
+wget -O /usr/local/src/volatility/volatility3/symbols/mac.zip https://downloads.volatilityfoundation.org/volatility3/symbols/mac.zip
+wget -O /usr/local/src/volatility/volatility3/symbols/linux.zip https://downloads.volatilityfoundation.org/volatility3/symbols/linux.zip
 
 #Git MFT_dump
-curl -s https://api.github.com/repos/omerbenamram/mft/releases/latest| \                                                                                                                                  1 ⚙
+curl -s https://api.github.com/repos/omerbenamram/mft/releases/latest | \
 grep -E 'browser_download_url.*unknown-linux-gnu.tar.gz'|awk -F'"' '{system("wget -P /tmp "$4) }'
 tar -xvf /tmp/mft*.gz -C /tmp
 chmod 755 /tmp/mft_dump/mft_dump
