@@ -163,12 +163,16 @@ wget -O /usr/local/src/siftgrab/ermount.sh https://raw.githubusercontent.com/sif
 wget -O /usr/local/src/siftgrab/prefetchruncounts.py https://raw.githubusercontent.com/siftgrab/prefetchruncounts/master/prefetchruncounts.py || pause 
 wget -O /usr/local/src/siftgrab/winservices.py https://raw.githubusercontent.com/siftgrab/Python-Registry-Extraction/master/winservices.py || pause 
 wget -O /usr/local/src/siftgrab/RegRipper30-apt-git-Install.sh https://raw.githubusercontent.com/siftgrab/siftgrab/master/regripper.conf/RegRipper30-apt-git-Install.sh  || pause
+wget -O /usr/local/src/siftgrab/parse_evtx_tasks.py  https://raw.githubusercontent.com/siftgrab/WindowsEventLogs/master/parse_evtx_tasks.py || pause
+wget -O /usr/local/src/siftgrab/parse_evtx_logins.py  https://raw.githubusercontent.com/siftgrab/WindowsEventLogs/master/parse_evtx_logins.py || pause
+wget -O /usr/local/src/siftgrab/parse_evtx_accounts.py  https://raw.githubusercontent.com/siftgrab/WindowsEventLogs/master/parse_evtx_accounts.py || pause
+wget -O /usr/local/src/siftgrab/parse_evtx_processes.py  https://raw.githubusercontent.com/siftgrab/WindowsEventLogs/master/parse_evtx_processes.py || pause
+wget -O /usr/local/src/siftgrab/parse_evtx_BITS.py  https://raw.githubusercontent.com/siftgrab/WindowsEventLogs/master/parse_evtx_BITS.py || pause
 chmod -R 755 /usr/local/src/irit/*  || pause 
 chmod -R 755 /usr/local/src/siftgrab/*  || pause 
-[ -f "/usr/local/bin/siftgrab.sh" ]  || cp /usr/local/src/irit/siftgrab.sh /usr/local/bin/siftgrab
-[ -f "/usr/local/bin/ermount" ]  ||cp /usr/local/src/siftgrab/ermount.sh /usr/local/bin/ermount
-[ -f "/usr/local/bin/prefetchruncounts.py" ] || cp /usr/local/src/siftgrab/prefetchruncounts.py /usr/local/bin/prefetchruncounts.py
-[ -f "/usr/local/bin/winservices.py" ] || cp /usr/local/src/siftgrab/winservices.py /usr/local/bin/winservices.py
+cp /usr/local/src/irit/siftgrab.sh /usr/local/bin/siftgrab
+cp /usr/local/src/siftgrab/ermount.sh /usr/local/bin/ermount
+cp /usr/local/src/siftgrab/*.py /usr/local/bin/
 
 #Get lf File Browser
 wget https://github.com/gokcehan/lf/releases/download/r17/lf-linux-amd64.tar.gz -O - | tar -xzvf - -C /tmp
