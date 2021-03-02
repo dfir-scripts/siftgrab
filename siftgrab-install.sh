@@ -19,7 +19,7 @@
 # ermount.sh			# prefetchruncounts.py
 # ewf-tools				# python2
 # exfat-utils			# python3
-# fdupes				# python-evtx 
+# fdupes				# python3-evtx 
 # feh					# python-registry 
 # gddrescue				# PyWMIPersistenceFinder.py
 # git					# qemu-utils 
@@ -62,7 +62,7 @@ pip3 -V || pause
 
 #pip package install and update
 # PIP version 3 = pip3
-sift_pip_pkgs="usnparser oletools libscca-python liblnk-python python-registry pefile libfwsi-python python-evtx regex iocextract"
+sift_pip_pkgs="usnparser oletools libscca-python liblnk-python python-registry pefile libfwsi-python python3-evtx regex iocextract"
 for pip_pkg in $sift_pip_pkgs;
 do
   pip3 install $pip_pkg || pause
