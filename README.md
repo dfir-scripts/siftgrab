@@ -1,48 +1,65 @@
 # siftgrab
-<li><b>Siftgrab.sh</b> is a Triage Tool for Windows Forensic Images using SANS Sift</li>
-A single script (siftgrab.sh) to mount images, collect and extract image artifacts.<br>  
-Process single or multiple computer excerpts into a single csv and TLN timeline<br>
-Copy Siftgrab.sh copy the files to usr/local/bin and make the following updates to SANS Sift:<br><br>
-Tested on SANS Sift 3.0 v2018.28.0 (Ubuntu 16.04) and SANS Sift 3.0 (Ubuntu 14.04)<br> 
-<li><b>INSTALLATION:</b><br>
-<b>Download Siftgrab and copy to /usr/local/bin</b><br>
-    "git clone https://github.com/siftgrab/siftgrab.git"<br>
-    "chmod +x siftgrab/*.sh <br>
-    "cp siftgrab/* /usr/local/bin/" <br><br>
-<b>Install Sqlite (required for chrome, firefox and skype history)</b><br>
-    "sudo apt-get install sqlite3"<br><br>
-<b>Update Regripper: (Regripper has lots of new plugins and capabilities)</b><br>
-    "git clone https://github.com/keydet89/RegRipper2.8.git"<br>
-    "sudo cp RegRipper2.8/shellitems.pl /usr/local/bin/shellitems.pl"<br>
-    "sudo cp RegRipper2.8/plugins/* /usr/local/src/regripper/plugins"<br><br>
-<b>Patch the latest version of rip.pl so it will work in Sift:  </b><br>
-    "siftgrab/rip.pl2linux.sh" (creates an updated rip.pl called rip.new)<br> 
-    "sudo cp rip.new /usr/local/bin/rip.pl"<br>
-    "sudo cp rip.new /usr/share/regripper/rip.pl"<br><br>
-<b>Download https://gitub.com/HarmJ0y/pylnker/pylnker.py and copy to /usr/local/bin:  (lnk file extraction)</b><br>
-    "wget https://github.com/HarmJ0y/pylnker/blob/master/pylnker.py"<br>
-    "chmod +x pylnker.py"<br>
-    "sudo cp pylnker.py /usr/local/bin/pylnker.py"<br><br>
-<b>Download http://github.com/bromiley/tools/tree/master/win10_prefetch/w10pf_parse.py and copy to /usr/local/bin:  (Windows 8+ prefetch parser)</b><br>
-    "wget http://github.com/bromiley/tools/tree/master/win10_prefetch/w10pf_parse.py"<br>
-    "chmod +x w10pf_parse.py"<br>
-    "sudo cp w10pf_parse.py /usr/local/bin/w10pf_parse.py"<br><br>
-<b>Recommended: Install Sushi to use space bar preview</b><br>
-    "sudo apt-get install gnome-sushi"<br><br><br>
-<li><b>MOUNTING:</li></b>
-    Selection 1 from siftrgrab menu or use ermount.sh from the command line<br>
-<li><b>ACQUISITION:</li></b>
-After mounting image, choose menu item 2, 3, 4 and or 5 as needed<br>
-Or use filegrab.sh from Sift or a Live Boot USB/DVD to acquire files<br> 
-<li><b>PROCESSING:</li></b>
-Single or multiple cases procesessing produces timelines and other extracted registry information<br>
-Location of data to process does not have to folllow Windows heirarchy<br>
-To maintain identity when processing multiple cases, place evidence items in separate <br>
-directories with parent folder named "cases"<br><br> 
+Siftgrab is a consolidation of open source tools and custom scripts. 
+It is a basic DFIR triage tool for examining Windows system disk images in a 
+Linux evnironment.  Tested on Ubuntu 20.04, Kali, Windows WSL2 and SANS SiFT.  
+Was originally created before there were tools like Kape but is still useful for those who like to forensicate from Linux
 
-<li><b>Sample directory structure needed to process multiple Windows computers:</li><br></b>
-                 
-             /mnt/hgfs/F/cases/Server1
-             /mnt/hgfs/F/cases/CONTROLLER
-             /mnt/hgfs/F/cases/myLabtop
-             /mnt/hgfs/F/cases/DESKTOP-Q4652
+<li> To install, just download and run the forensics tools install script:
+
+    wget https://raw.githubusercontent.com/dfir-scripts/installers/main/install-forensic-tools.sh
+    sudo chmod 755 install-forensic-tools.sh
+    sudo ./install-forensic-tools.sh
+    
+To access the siftgrab menu simply type:
+    
+    sudo siftgrab
+
+There are lots of forensic tools including siftgrab, so it is great way to quickly add a lot of forensic
+tools to kali,Windows WSL or Ubuntu.
+    
+Downloaded tools are located in /usr/local/src/.
+Some are copied to /usr/local/bin.
+
+    
+<li>Installers:  
+ forensic-tools-install.sh
+ RegRipper30-apt-git-Install.sh
+ install-autospy-gui.sh
+ get-yara-rules.sh
+
+<li>General purpose forensic tool
+ Sleuthkit/Autopsy (Gui can be installed using install script: install-autospy-gui.sh)
+ siftgrab (Repurposed and updated all-in-one triage script I wrote for a SANS gold paper) 
+
+<li>Disk Mounting, Imaging and Carving
+ ftkimager,ermount,ewf-tools,afflib-tools,qemu-utils,libbde-utils,exfat-utils,libvshadow-utils
+ xmount,ddrescue,photorec/testdisk,ifuse,afro,apfs-fuse
+
+<li>Parsers  
+AnalyzeMFT,MFT_Dump,usnparser.py,Regripper 3.0,Tools from WFA 4/e, timeline tools, etc. (Harlan Carvey),
+esedbexport,prefetchruncounts.py,lnkinfo,evtx_dump,PyWMIPersistenceFinder.py,CCM_RUA_Finder.py,pff-tools,
+jobparser.py,bits_parser.py,Hindsight, Unfurl,Kacos2000/Queries,INDXParse.py,Volatility3,KStrike.py
+
+<li>File Analysis Tools
+Didier Stevens Tools,Floss,DEXRAY,iocextract,stegosuite,oletools,pefile,Density Scout
+
+<li>Python Modules (installs python2, python3)
+python-registry,python3-libesedb,python-evtx,libscca-python,liblnk-python,libfwsi-python
+
+<li>Misc
+gift/stable repository,clamav,lf,attr,libesedb-utils,liblnk-utils,libevtx-utils,pff-tools,jq,yara,rar,unrar,p7zip-full,p7zip-rar
+
+<li>Additional Tools (add using " ./install-forensic-tools.sh -t") 
+Snap,CyberChef,Bless,Okteta,Brave,SqliteBrowser,R-Linux, LogFileParser,Bulk Extractor (Unconfigured),clamtk,Powershell,CyLR,gparted,feh,eog,glogg,bless,binwalk,samba,remmina,clamtk,guymager,graphviz
+
+<li>Yara Rules (fetch using get-yara-rules.sh)
+Nextron, ReversingLabs, yararules.com
+
+<li>Directories created
+  /mnt/raw 
+  /mnt/image_mount
+  /mnt/vss
+  /mnt/shadow
+  /mnt/bde
+  /mnt/smb
+  /cases
