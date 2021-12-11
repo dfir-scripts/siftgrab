@@ -133,7 +133,7 @@ while [ opt != '' ]
             ;;
         #Menu Selection 4: Acquire Data from Mounted Disks or Image Excerpts
         4) clear;
-           /usr/local/src/irit/grab-winfiles.sh
+           /usr/local/src/dfir-scripts/grab-winfiles.sh
            read -n1 -r -p "Press any key to continue..." key
            clear;
            show_menu;
@@ -901,18 +901,15 @@ function prefetch_extract(){
     cd $mount_dir
     makegreen "Searching for PREFETCH (prefetchruncounts.py)"
     sleep 1
-    find "/$mount_dir/$windir/" -maxdepth 1 -type d -iname "Prefetch" |sed 's/$/\//'| while read d;
+    find /$mount_dir/$windir/[P,p]refetch -maxdepth 0 -type d |grep -i etch$ | while read d;
     do
-      python3 /usr/local/bin/prefetchruncounts.py "$d" -o $triage_dir/Program_Execution/Prefetch-$comp_name
-    done
-
-    find $triage_dir/Program_Execution |grep run_count |while read d;
-    do
-    cat $d | while read line;
+      python3 /usr/local/src/dfir-scripts/prefetchruncounts.py "$d" | tee -a $triage_dir/Program_Execution/Prefetch-$comp_name
+      python3 /usr/local/src/dfir-scripts/prefetchruncounts.py "$d" -t | tee /tmp/prc.txt \
+      [ "/tmp/prc.txt" ] && cat /tmp/prc.txt |while read line;
       do
         timestamp=$(echo $line| awk -F',' '{print $1}'| grep -Eo '^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[1-2][0-9]|3[0-1]) (2[0-3]|[01][0-9]):[0-5][0-9]:[0-5][0-9]')
         [ "$timestamp" != "" ] && tlntime=$(date -d "$timestamp"  +"%s" 2>/dev/null)
-        tlninfo=$(echo $line| awk -F',' '{print "[Program Execution] File:"$2" Run Count:"$4" Vol_ID:"$8" "$11}')
+        [ "$tlntime" != "" ]  && tlninfo = $(echo $line| awk -F',' '{print "[Program Execution] PF_File:"$3" Executable:"$4" Run Count:"$2" Volumes"$5}')
         [ "$timestamp" != "" ] && echo $tlntime"|prefetch|"$comp_name"||"$tlninfo | tee -a $tempfile
       done
     done
