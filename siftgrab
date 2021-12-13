@@ -903,7 +903,7 @@ function prefetch_extract(){
     sleep 1
     find /$mount_dir/$windir/[P,p]refetch -maxdepth 0 -type d |grep -i etch$ | while read d;
     do
-      python3 /usr/local/src/dfir-scripts/prefetchruncounts.py "$d" | tee -a $triage_dir/Program_Execution/Prefetch-$comp_name
+      python3 /usr/local/src/dfir-scripts/prefetchruncounts.py "$d" | tee -a $triage_dir/Program_Execution/Prefetch-$comp_name.txt
       python3 /usr/local/src/dfir-scripts/prefetchruncounts.py "$d" -t | tee /tmp/prc.txt \
       [ "/tmp/prc.txt" ] && cat /tmp/prc.txt |while read line;
       do
