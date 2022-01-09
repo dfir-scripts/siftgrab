@@ -224,7 +224,7 @@ while [ opt != '' ]
         #Menu Selection:Lf File Browser
         7) clear;
            cd /cases
-           gnome-terminal -- bash -c "lf; exec bash"
+           lf
            clear;
            show_menu;
             ;;
@@ -839,9 +839,9 @@ function chrome2tln(){
       awk -F'|' '{$1=strftime("%Y-%m-%d %H:%M:%S",$1)}{print $1",Chrome,,,[Bookmark Created] NAME:"$2" URL:"$3}' |\
       sed "s/,,,/,${comp_name},${user_name},/" | tee -a "$triage_dir/Browser_Activity/$user_name-Chrome-Bookmarks-$comp_name.csv"
 
-      #Run Hindsight on Chrome
-      cd $triage_dir/Browser_Activity
-      python /usr/local/src/Hindsight/hindsight.py -i "$mount_dir/$d" -o "$triage_dir/Browser_Activity/$user_name-Hindsight" -l "$triage_dir/Browser_Activity/hindsight.log"
+      #TODO Run Hindsight on Chrome
+      #cd $triage_dir/Browser_Activity
+      #python /usr/local/bin/hindsight.py -i "$mount_dir/$d" -o "$triage_dir/Browser_Activity/$user_name-Hindsight" -l "$triage_dir/Browser_Activity/hindsight.log"
 
     done
 
@@ -965,7 +965,7 @@ function prefetch_extract(){
       do
         timestamp=$(echo $line| awk -F',' '{print $1}'| grep -Eo '^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[1-2][0-9]|3[0-1]) (2[0-3]|[01][0-9]):[0-5][0-9]:[0-5][0-9]')
         [ "$timestamp" != "" ] && tlntime=$(date -d "$timestamp"  +"%s" 2>/dev/null)
-        [ "$tlntime" != "" ]  && tlninfo=$(echo $line| awk -F',' '{print "[Program Execution] PF_File:"$3" Executable:"$4" Run Count:"$2" Volumes"$5}')
+        [ "$tlntime" != "" ] && tlninfo=$(echo $line| awk -F',' '{print "[Program Execution] PF_File:"$3" Executable:"$4" Run Count:"$2" Volumes"$5}')
         [ "$timestamp" != "" ] && echo $tlntime"|prefetch|"$comp_name"||"$tlninfo | tee -a $tempfile
       done
     done
