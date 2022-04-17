@@ -1085,18 +1085,13 @@ function extract_WinEVTX(){
     do
       python3 /usr/local/src/dfir-scripts/python/parse_evtx_tasks.py "$d" |tee -a $triage_dir/WindowsEventLogs/Task-Scheduler-evtx-$comp_name.txt;
     done
-    find $mount_dir/$winsysdir/$evtxdir -type f 2>/dev/null | grep -i \/Microsoft-Windows-TerminalServices-LocalSessionManager\%4Operational.evtx| while read d;
-    do
-      python3 /usr/local/src/dfir-scripts/python/parse_evtx_RDP_Local.py "$d" |tee -a $triage_dir/WindowsEventLogs/incoming-RDP-evtx-$comp_name.txt;
-    done
-    find $mount_dir/$winsysdir/$evtxdir -type f 2>/dev/null | grep -i \/Microsoft-Windows-TerminalServices-RemoteConnectionManager\%4Admin.evtx$| while read d;
-    do
-      python3 /usr/local/src/dfir-scripts/python/parse_evtx_RDP_Remote.py "$d" -n |tee -a $triage_dir/WindowsEventLogs/incoming-RDP-evtx-$comp_name.txt;
-    done  
+    #Microsoft-Windows-Bits-Client\%4Operational.evtx
     find $mount_dir/$winsysdir/$evtxdir -type f 2>/dev/null | grep -i \/Microsoft-Windows-Bits-Client\%4Operational.evtx$| while read d;
     do
       python3 /usr/local/src/dfir-scripts/python/parse_evtx_BITS.py "$d" -n |tee -a $triage_dir/WindowsEventLogs/BITS-evtx-$comp_name.txt;
-    done   
+    done
+    #Find RDP Connections
+    python3 /usr/local/src/dfir-scripts/python/parse_evtx_RDP.py $mount_dir/$winsysdir/$evtxdir |tee -a $triage_dir/WindowsEventLogs/RDP-evtx-$comp_name.txt; 
 }
 
 
@@ -1146,7 +1141,7 @@ function analyze_mft(){
     sort -rn |tee $triage_dir/Timeline/MFT/MFT-$comp_name.TLN.txt && \
     cat $triage_dir/Timeline/MFT/MFT-$comp_name.TLN.txt | awk -F'|' '{$1=strftime("%Y-%m-%d %H:%M:%S",$1)}{print $1","$2","$3","$4","$5}'| \
     tee -a $triage_dir/Timeline/MFT/MFT-$comp_name.csv
-    mft_dump \$MFT -o csv -f $triage_dir/Timeline/MFT/MFT_Dump-$comp_name.csv
+    mft_dump \$MFT -o jsonl -f $triage_dir/Timeline/MFT/MFT_Dump-$comp_name.jsonl
 }
 
 #Extract $USNJRNL:$J to TLN
