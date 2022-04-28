@@ -180,10 +180,12 @@ while [ opt != '' ]
            makegreen "Extract Windows Event Logs to jsonl"
            makegreen "Default Directory: Windows/System32/winevt/Logs"
            set_msource_path
-           set_windir         
+           set_windir
            set_dsource_path
            triage_dir=$case_dir
+           get_evtxsize
            makered "Exporting Windows Event Logs to jsonl"
+           extract_WinEVTX
            evtxdump
            read -n1 -r -p "Press any key to continue..." key
            clear
@@ -292,7 +294,7 @@ function set_windir(){
       regdir=$(find $mount_dir/$winsysdir -maxdepth 1 -type d 2>/dev/null|egrep -m1 -io \/config$)
       evtxdir=$(find $mount_dir/$winsysdir -maxdepth 2 -type d 2>/dev/null|egrep -m1 -io \/winevt\/Logs$)
       [ "$windir" == "" ] || [ "$winsysdir" == "" ] && files_only="yes"
-      [ "$opt" == "2" ] || [ "$opt" == "5" ] || [ "$opt" == "6" ] && [ "$files_only" == "yes" ]  && \
+      [ "$opt" == "2" ] || [ "$opt" == "5" ] || [ "$opt" == "6" ] && [ "$files_only" == "yes" ] && \
       makered "No Windows Directory Path Found on Source..." && sleep 2 && show_menu
       [ "$winsysdir" != "" ] && echo "Windows System32 Directory => $mount_dir$winsysdir"
       [ "$regdir" != "" ] && echo  "Registry Directory =>" $mount_dir$winsysdir$regdir
@@ -353,13 +355,13 @@ function get_usnjrlnsize(){
 #Check Windows Event Logs Size
 function get_evtxsize(){
     cd $mount_dir
-    [ "$opt" = "2" ] && du -sh $mount_dir/$winsysdir/$evtxdir && \
+    [ "$opt" = "2" ] && \
+    du -sh $mount_dir/$winsysdir/$evtxdir && \
     makered "EXPORT WINDOWS EVENT LOGS TO JSONL?" && \
     yes-no && evtx="yes"
-    $mount_dir/$winsysdir/$evtxdir -size +500M -printf "%s %p\n" 2>/dev/null|sort && \
-    makered "There are some event logs larger than 500M... This could take a long time. Do you want to extract them?"
-    yes-no || evtx_max "-size -500M"
-    
+    $mount_dir/$winsysdir/$evtxdir -size +500M -printf "%s bytes\t%p\n" 2>/dev/null|sort| grep . && \
+    makered "There are some event logs larger than 500M... This could take a long time. Do you want to extract them?" && \
+    yes-no || evtx_max "-size -500M"    
 }
 
 #Copy Windows Journal file: USNJRNL:$J
@@ -1096,12 +1098,11 @@ function extract_WinEVTX(){
     #Microsoft-Windows-Bits-Client\%4Operational.evtx
     find $mount_dir/$winsysdir/$evtxdir -type f 2>/dev/null | grep -i \/Microsoft-Windows-Bits-Client\%4Operational.evtx$| while read d;
     do
-      python3 /usr/local/src/dfir-scripts/python/parse_evtx_BITS.py "$d" -n |tee -a $triage_dir/WindowsEventLogs/BITS-evtx-$comp_name.txt;
+      python3 /usr/local/src/dfir-scripts/python/parse_evtx_BITS.py "$d" |tee -a $triage_dir/WindowsEventLogs/BITS-evtx-$comp_name.txt;
     done
     #Find RDP Connections
-    python3 /usr/local/src/dfir-scripts/python/parse_evtx_RDP.py $mount_dir/$winsysdir/$evtxdir |tee -a $triage_dir/WindowsEventLogs/RDP-evtx-$comp_name.txt; 
+    python3 /usr/local/src/dfir-scripts/python/parse_evtx_RDP.py $mount_dir/$winsysdir/$evtxdir |tee -a $triage_dir/WindowsEventLogs/RDP-evtx-$comp_name.txt;
 }
-
 
 # Extract WindowsEvent Logs to jsonl
 function evtxdump(){
@@ -1130,12 +1131,11 @@ function evtxdump(){
           jq  '.Event|select(.EventData.Data."#text"!=null)|.System.Computer,.System.TimeCreated."#attributes".SystemTime,.EventData.Data,.System.Channel'| \
       tee -a $triage_dir/WindowsEventLogs/PowerShell-HostApplication.txt
     done
-    
+    # Get IP Addresses in EVTX files
     find $triage_dir/WindowsEventLogs/jsonl/ -type f| while read d; 
     do 
     echo $d && grep -Eoa "\b(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b" "$d"|sort -u && echo "********************************************************";done| \
     tee -a $triage_dir/WindowsEventLogs/IPv4-Addresses-in-evtx.txt
-
 }
 
 
