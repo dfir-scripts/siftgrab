@@ -27,7 +27,7 @@ Some are copied to /usr/local/bin.
  get-yara-rules.sh
 
 <li>Forensic tool/Triage
- Sleuthkit/Autopsy (Gui can be installed using install script: install-autospy-gui.sh)
+ Sleuthkit/Autopsy
  siftgrab
 
 <li>Disk Mounting, Imaging and Carving
