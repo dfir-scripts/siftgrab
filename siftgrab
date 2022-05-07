@@ -38,7 +38,7 @@ Tools List:
 AnalyzeMFT,MFT_Dump,usnparser.py,Regripper 3.0,Tools from WFA 4/e, timeline tools, etc. (Harlan Carvey),
 yarp, registryFlush, dfir-scripts, esedbexport, regripperall.sh, prefetchruncounts.py,lnkinfo,evtx_dump,
 PyWMIPersistenceFinder.py,CCM_RUA_Finder.py,pff-tools,jobparser.py,bits_parser.py,Hindsight, Unfurl,
-Kacos2000/Queries,INDXParse.py,Volatility3,KStrike.py,sqlite_miner
+Kacos2000/Queries,chainsaw,INDXParse.py,Volatility3,KStrike.py,sqlite_miner
 
 
 # File Analysis Tools
@@ -179,10 +179,13 @@ while [ opt != '' ]
         3) clear;
            makegreen "Extract Windows Event Logs to jsonl"
            makegreen "Default Directory: Windows/System32/winevt/Logs"
-           set_msource_path         
+           set_msource_path
+           set_windir
            set_dsource_path
            triage_dir=$case_dir
+           get_evtxsize
            makered "Exporting Windows Event Logs to jsonl"
+           extract_WinEVTX
            evtxdump
            read -n1 -r -p "Press any key to continue..." key
            clear
@@ -190,6 +193,7 @@ while [ opt != '' ]
             ;;
         #Menu Selection: Run Regripper on a mounted volume or data source
         4) clear;
+           makegreen "Run Regripper on a mounted volume or offline data dir"
            set_msource_path
            set_windir
            get_computer_name
@@ -284,15 +288,17 @@ function check_dsource_path(){
 #Find "Windows" directory paths
 function set_windir(){
       cd $mount_dir
-      windir=$(find $mount_dir -maxdepth 1 -type d |egrep -m1 -io windows$)
-      winsysdir=$(find $mount_dir/$windir -maxdepth 1 -type d |egrep -m1 -io windows\/system32$)
-      user_dir=$(find $mount_dir -maxdepth 1 -type d |grep -m1 -io users$)
-      regdir=$(find $mount_dir/$winsysdir -maxdepth 1 -type d |egrep -m1 -io \/config$)
-      evtxdir=$(find $mount_dir/$winsysdir -maxdepth 2 -type d |egrep -m1 -io \/winevt\/Logs$)
-      [ "$windir" == "" ] || [ "$winsysdir" == "" ] && makered "No Windows Directory Path Found on Source..." && sleep 2 && show_menu
-      echo "Windows System32 Directory => $mount_dir$winsysdir"
-      echo  "Registry Directory =>" $mount_dir$winsysdir$regdir
-      echo  "Windows Eventlog Directory =>" $mount_dir$winsysdir$evtxdir
+      windir=$(find $mount_dir -maxdepth 1 -type d 2>/dev/null|egrep -m1 -io windows$)
+      winsysdir=$(find $mount_dir/$windir -maxdepth 1 -type d 2>/dev/null|egrep -m1 -io windows\/system32$)
+      user_dir=$(find $mount_dir -maxdepth 1 -type d 2>/dev/null|grep -m1 -io users$)
+      regdir=$(find $mount_dir/$winsysdir -maxdepth 1 -type d 2>/dev/null|egrep -m1 -io \/config$)
+      evtxdir=$(find $mount_dir/$winsysdir -maxdepth 2 -type d 2>/dev/null|egrep -m1 -io \/winevt\/Logs$)
+      [ "$windir" == "" ] || [ "$winsysdir" == "" ] && files_only="yes"
+      [ "$opt" == "2" ] || [ "$opt" == "5" ] || [ "$opt" == "6" ] && [ "$files_only" == "yes" ] && \
+      makered "No Windows Directory Path Found on Source..." && sleep 2 && show_menu
+      [ "$winsysdir" != "" ] && echo "Windows System32 Directory => $mount_dir$winsysdir"
+      [ "$regdir" != "" ] && echo  "Registry Directory =>" $mount_dir$winsysdir$regdir
+      [ "$evtxdir" != "" ] && echo  "Windows Eventlog Directory =>" $mount_dir$winsysdir$evtxdir
 }
 
 #Get Computer Name using Regripper's "comp_name" plugin
@@ -349,9 +355,13 @@ function get_usnjrlnsize(){
 #Check Windows Event Logs Size
 function get_evtxsize(){
     cd $mount_dir
-    du -sh $mount_dir/$winsysdir/$evtxdir
-    makered "EXPORT WINDOWS EVENT LOGS TO JSONL?"
-    yes-no && evtx="yes"    
+    [ "$opt" = "2" ] && \
+    du -sh $mount_dir/$winsysdir/$evtxdir && \
+    makered "EXPORT WINDOWS EVENT LOGS TO JSONL?" && \
+    yes-no && evtx="yes"
+    $mount_dir/$winsysdir/$evtxdir -size +500M -printf "%s bytes\t%p\n" 2>/dev/null|sort| grep . && \
+    makered "There are some event logs larger than 500M... This could take a long time. Do you want to extract them?" && \
+    yes-no || evtx_max="-size -500M"    
 }
 
 #Copy Windows Journal file: USNJRNL:$J
@@ -958,10 +968,11 @@ function prefetch_extract(){
     cd $mount_dir
     makegreen "Searching for PREFETCH (prefetchruncounts.py)"
     sleep 1
-    find /$mount_dir/$windir/[P,p]refetch -maxdepth 0 -type d |grep -i etch$ | while read d;
+    find /$mount_dir/$windir/[P,p]refetch -maxdepth 0 -type d |grep -m 1 -i fetch$ | while read d;
     do
       python3 /usr/local/src/dfir-scripts/python/prefetchruncounts.py "$d" | tee -a $triage_dir/Program_Execution/Prefetch-$comp_name.txt
-      python3 /usr/local/src/dfir-scripts/python/prefetchruncounts.py "$d" -t | tee /tmp/prc.txt \
+      python3 /usr/local/src/dfir-scripts/python/prefetchruncounts.py "$d" -t | tee /tmp/prc.txt 
+      sleep 1
       [ "/tmp/prc.txt" ] && cat /tmp/prc.txt |while read line;
       do
         timestamp=$(echo $line| awk -F',' '{print $1}'| grep -Eo '^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[1-2][0-9]|3[0-1]) (2[0-3]|[01][0-9]):[0-5][0-9]:[0-5][0-9]')
@@ -1088,12 +1099,11 @@ function extract_WinEVTX(){
     #Microsoft-Windows-Bits-Client\%4Operational.evtx
     find $mount_dir/$winsysdir/$evtxdir -type f 2>/dev/null | grep -i \/Microsoft-Windows-Bits-Client\%4Operational.evtx$| while read d;
     do
-      python3 /usr/local/src/dfir-scripts/python/parse_evtx_BITS.py "$d" -n |tee -a $triage_dir/WindowsEventLogs/BITS-evtx-$comp_name.txt;
+      python3 /usr/local/src/dfir-scripts/python/parse_evtx_BITS.py "$d" |tee -a $triage_dir/WindowsEventLogs/BITS-evtx-$comp_name.txt;
     done
     #Find RDP Connections
-    python3 /usr/local/src/dfir-scripts/python/parse_evtx_RDP.py $mount_dir/$winsysdir/$evtxdir |tee -a $triage_dir/WindowsEventLogs/RDP-evtx-$comp_name.txt; 
+    python3 /usr/local/src/dfir-scripts/python/parse_evtx_RDP.py $mount_dir/$winsysdir/$evtxdir |tee -a $triage_dir/WindowsEventLogs/RDP-evtx-$comp_name.txt;
 }
-
 
 # Extract WindowsEvent Logs to jsonl
 function evtxdump(){
@@ -1101,7 +1111,7 @@ function evtxdump(){
     makegreen "Searching for windows Event Logs"
     sleep 1
     mkdir -p "$triage_dir/WindowsEventLogs/jsonl"
-    find $mount_dir/$winsysdir/$evtxdir -type f 2>/dev/null -size +70k -name '*.evtx' | while read d;
+    find $mount_dir/$winsysdir/$evtxdir -type f 2>/dev/null -size +70k $evtx_max -name '*.evtx' | while read d;
     do
       evtx_file=$(basename "$d")
       makegreen "Processing Windows Event Log $evtx_file"
@@ -1122,12 +1132,11 @@ function evtxdump(){
           jq  '.Event|select(.EventData.Data."#text"!=null)|.System.Computer,.System.TimeCreated."#attributes".SystemTime,.EventData.Data,.System.Channel'| \
       tee -a $triage_dir/WindowsEventLogs/PowerShell-HostApplication.txt
     done
-    
+    # Get IP Addresses in EVTX files
     find $triage_dir/WindowsEventLogs/jsonl/ -type f| while read d; 
     do 
     echo $d && grep -Eoa "\b(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b" "$d"|sort -u && echo "********************************************************";done| \
     tee -a $triage_dir/WindowsEventLogs/IPv4-Addresses-in-evtx.txt
-
 }
 
 
