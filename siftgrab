@@ -154,7 +154,7 @@ while [ opt != '' ]
            extract_srudb
            parse_current.mdb
            # #bits_parser TODO
-           [ "$evtx" ] && evtxdump           	
+           evtxdump           	
            extract_WinEVTX
            consolidate_timeline
            extract_winactivities
@@ -178,7 +178,7 @@ while [ opt != '' ]
         #Menu Selection: Extract Windows Event Log to jsonl
         3) clear;
            makegreen "Extract Windows Event Logs to jsonl"
-           makegreen "Default Directory: Windows/System32/winevt/Logs"
+           makegreen "Default Source Directory: Windows/System32/winevt/Logs"
            set_msource_path
            set_windir
            set_dsource_path
@@ -355,10 +355,7 @@ function get_usnjrlnsize(){
 #Check Windows Event Logs Size
 function get_evtxsize(){
     cd $mount_dir
-    [ "$opt" = "2" ] && \
     du -sh $mount_dir/$winsysdir/$evtxdir && \
-    makered "EXPORT WINDOWS EVENT LOGS TO JSONL?" && \
-    yes-no && evtx="yes"
     $mount_dir/$winsysdir/$evtxdir -size +500M -printf "%s bytes\t%p\n" 2>/dev/null|sort| grep . && \
     makered "There are some event logs larger than 500M... This could take a long time. Do you want to extract them?" && \
     yes-no || evtx_max="-size -500M"    
@@ -925,10 +922,8 @@ function extract_srudb(){
     makegreen "Extract srudb.dat file"
     find /$mount_dir/$winsysdir/[S,s][R,r][U,u] -maxdepth 2 -type f -iname "srudb.dat" 2>/dev/null |while read d;
     do
-      echo "/usr/bin/esedbexport -t $triage_dir/Browser_Activity/SRU-$comp_name "$d""
-      /usr/bin/esedbexport -t $triage_dir/System_Info/Network/SRU-$comp_name "$d";
+      python /usr/local/src/srum-dump/srum_dump2.py --SRUM_INFILE "$d" --XLSX_OUTFILE $triage_dir/System_Info/Network/SRU-$comp_name.xlsx -r $mount_dir/$winsysdir/$regdir/SOFTWARE -q -t /usr/local/src/srum-dump/SRUM_TEMPLATE2.xlsx 
     done
-    cd /$mount_dir
 }
 
 
@@ -1011,8 +1006,8 @@ function consolidate_timeline(){
     makegreen "Consolidating TLN Files"
     echo ""
     cat $tempfile | sort -rn |uniq | tee -a | tee -a $triage_dir/Timeline/Triage-Timeline-$comp_name.TLN;
-    cat $tempfile |awk -F'|' '{$1=strftime("%Y-%m-%d %H:%M:%S",$1)}{print $1","$2","$3","$4","$5}'|sort -rn | uniq| grep -va ",,,," |tee -a $triage_dir/Timeline/Triage-Timeline-$comp_name.csv.txt
-    cat $triage_dir/Timeline/Triage-Timeline-$comp_name.csv.txt|grep -ia ",alert," |tee -a $triage_dir/Alert/RegRipperAlerts-$comp_name.csv
+    cat $tempfile |awk -F'|' '{$1=strftime("%Y-%m-%d %H:%M:%S",$1)}{print $1","$2","$3","$4","$5}'|sort -rn | uniq| grep -va ",,,," |tee -a $triage_dir/Timeline/Triage-Timeline-$comp_name.csv
+    cat $triage_dir/Timeline/Triage-Timeline-$comp_name.csv|grep -ia ",alert," |tee -a $triage_dir/Alert/RegRipperAlerts-$comp_name.csv
     makegreen "Complete!"
 }
 
@@ -1094,15 +1089,15 @@ function extract_WinEVTX(){
     #Microsoft-Windows-TaskScheduler4Operational.evtx
     find $mount_dir/$winsysdir/$evtxdir -type f 2>/dev/null | grep -i \/Microsoft-Windows-TaskScheduler\%4Operational.evtx$| while read d;
     do
-      python3 /usr/local/src/dfir-scripts/python/parse_evtx_tasks.py "$d" |tee -a $triage_dir/WindowsEventLogs/Task-Scheduler-evtx-$comp_name.txt;
+      python3 /usr/local/src/dfir-scripts/WinEventLogs/parse_evtx_tasks.py "$d" |tee -a $triage_dir/WindowsEventLogs/Task-Scheduler-evtx-$comp_name.csv;
     done
     #Microsoft-Windows-Bits-Client\%4Operational.evtx
     find $mount_dir/$winsysdir/$evtxdir -type f 2>/dev/null | grep -i \/Microsoft-Windows-Bits-Client\%4Operational.evtx$| while read d;
     do
-      python3 /usr/local/src/dfir-scripts/python/parse_evtx_BITS.py "$d" |tee -a $triage_dir/WindowsEventLogs/BITS-evtx-$comp_name.txt;
+      python3 /usr/local/src/dfir-scripts/WinEventLogs/parse_evtx_BITS.py "$d" |tee -a $triage_dir/WindowsEventLogs/BITS-evtx-$comp_name.csv;
     done
     #Find RDP Connections
-    python3 /usr/local/src/dfir-scripts/python/parse_evtx_RDP.py $mount_dir/$winsysdir/$evtxdir |tee -a $triage_dir/WindowsEventLogs/RDP-evtx-$comp_name.txt;
+    python3 /usr/local/src/dfir-scripts/WinEventLogs/parse_evtx_RDP.py $mount_dir/$winsysdir/$evtxdir |tee -a $triage_dir/WindowsEventLogs/RDP-evtx-$comp_name.csv;
 }
 
 # Extract WindowsEvent Logs to jsonl
@@ -1137,6 +1132,22 @@ function evtxdump(){
     do 
     echo $d && grep -Eoa "\b(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b" "$d"|sort -u && echo "********************************************************";done| \
     tee -a $triage_dir/WindowsEventLogs/IPv4-Addresses-in-evtx.txt
+    # Get Statistics from Security.evtx
+    find $triage_dir/WindowsEventLogs/jsonl/ -type f 2>/dev/null | \
+    grep -i Security.evtx.jsonl| while read d;
+    do
+      echo "SECURITY.EVTX EVENT COUNT" |tee -a $triage_dir/WindowsEventLogs/Security.evtx-stats.txt 
+      /usr/local/src/dfir-scripts/WinEventLogs/jq/security.evtx.count.sh "$d" |tee -a $triage_dir/WindowsEventLogs/Security.evtx-stats.txt
+      echo "*********************************************************
+      
+      SECURITY.EVTX LOGIN TYPES" |tee -a $triage_dir/WindowsEventLogs/Security.evtx-stats.txt 
+      /usr/local/src/dfir-scripts/WinEventLogs/jq/logintypescount.sh "$d" |tee -a $triage_dir/WindowsEventLogs/Security.evtx-stats.txt
+      echo "*********************************************************
+      
+      SECURITY.EVTX NEW PROCESSES" |tee -a $triage_dir/WindowsEventLogs/Security.evtx-stats.txt 
+      /usr/local/src/dfir-scripts/WinEventLogs/jq/newprocesscount.sh "$d" |tee -a $triage_dir/WindowsEventLogs/Security.evtx-stats.txt
+      echo ********************************************************* |tee -a $triage_dir/WindowsEventLogs/Security.evtx-stats.txt
+    done
 }
 
 
