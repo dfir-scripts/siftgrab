@@ -915,6 +915,11 @@ function extract_webcacheV(){
       do
         /usr/bin/esedbexport -t $triage_dir/Browser_Activity/IEWebcache-$user_name-$comp_name "$d";
       done
+      find $triage_dir/Browser_Activity/IEWebcache-$user_name-$comp_name.export -type d| while read dir;
+      do
+        grep -hir Visited: $dir |awk '{ s = ""; for (i = 9; i <= NF; i++) s = s $i " "; print s }'|awk -v last=26 '{NF = last} 1'| \
+        tee $triage_dir/Browser_Activity/IEWebcache-Visited-$user_name-$comp_name.csv
+      done      
     done
 }
 
@@ -1134,19 +1139,24 @@ function evtxdump(){
     tee -a $triage_dir/WindowsEventLogs/IPv4-Addresses-in-evtx.txt
     # Get Statistics from Security.evtx
     find $triage_dir/WindowsEventLogs/jsonl/ -type f 2>/dev/null | \
-    grep -i Security.evtx.jsonl| while read d;
+    grep -i \/Security.evtx.jsonl| while read d;
     do
       echo "SECURITY.EVTX EVENT COUNT" |tee -a $triage_dir/WindowsEventLogs/Security.evtx-stats.txt 
       /usr/local/src/dfir-scripts/WinEventLogs/jq/security.evtx.count.sh "$d" |tee -a $triage_dir/WindowsEventLogs/Security.evtx-stats.txt
       echo "*********************************************************
+      "|tee -a $triage_dir/WindowsEventLogs/Security.evtx-stats.txt 
       
-      SECURITY.EVTX LOGIN TYPES" |tee -a $triage_dir/WindowsEventLogs/Security.evtx-stats.txt 
+      echo "SECURITY.EVTX LOGIN TYPES" |tee -a $triage_dir/WindowsEventLogs/Security.evtx-stats.txt 
       /usr/local/src/dfir-scripts/WinEventLogs/jq/logintypescount.sh "$d" |tee -a $triage_dir/WindowsEventLogs/Security.evtx-stats.txt
-      echo "*********************************************************
       
-      SECURITY.EVTX NEW PROCESSES" |tee -a $triage_dir/WindowsEventLogs/Security.evtx-stats.txt 
+      echo "SECURITY.EVTX NEW PROCESSES" |tee -a $triage_dir/WindowsEventLogs/Security.evtx-stats.txt 
       /usr/local/src/dfir-scripts/WinEventLogs/jq/newprocesscount.sh "$d" |tee -a $triage_dir/WindowsEventLogs/Security.evtx-stats.txt
-      echo ********************************************************* |tee -a $triage_dir/WindowsEventLogs/Security.evtx-stats.txt
+
+      echo "SECURITY.EVTX FAILED LOGINS" |tee -a $triage_dir/WindowsEventLogs/failed-logins.txt  
+      /usr/local/src/dfir-scripts/WinEventLogs/jq/failed_logins.sh  "$d" |tee -a $triage_dir/WindowsEventLogs/failed-logins.txt 
+      
+      echo "SECURITY.EVTX EXPLICIT LOGINS EID4648" |tee -a $triage_dir/WindowsEventLogs/explicit-logins.txt
+      /usr/local/src/dfir-scripts/WinEventLogs/jq/explicit-logins.txt  "$d" |tee -a $triage_dir/WindowsEventLogs/explicit-logins.txt 
     done
 }
 
@@ -1156,7 +1166,7 @@ function analyze_mft(){
     cd $mount_dir
     makegreen "Analyzing \$MFT Standby..."
     [ -f "\$MFT" ] && \
-    python /usr/local/bin/analyzeMFT.py -p -f \$MFT --bodyfull --bodyfile=$triage_dir/Timeline/MFT/MFT-$comp_name.body
+    python2 /usr/local/bin/analyzeMFT.py -p -f \$MFT --bodyfull --bodyfile=$triage_dir/Timeline/MFT/MFT-$comp_name.body
     [ -f $triage_dir/Timeline/MFT/MFT-$comp_name.body ] && bodyfile.pl -f $triage_dir/Timeline/MFT/MFT-$comp_name.body -s $comp_name | \
     sort -rn |tee $triage_dir/Timeline/MFT/MFT-$comp_name.TLN.txt && \
     cat $triage_dir/Timeline/MFT/MFT-$comp_name.TLN.txt | awk -F'|' '{$1=strftime("%Y-%m-%d %H:%M:%S",$1)}{print $1","$2","$3","$4","$5}'| \
