@@ -1132,11 +1132,24 @@ function evtxdump(){
           jq  '.Event|select(.EventData.Data."#text"!=null)|.System.Computer,.System.TimeCreated."#attributes".SystemTime,.EventData.Data,.System.Channel'| \
       tee -a $triage_dir/WindowsEventLogs/PowerShell-HostApplication.txt
     done
-    # Get IP Addresses in EVTX files
+
+    # Get IPv5 Addresses in EVTX files
     find $triage_dir/WindowsEventLogs/jsonl/ -type f| while read d; 
-    do 
-    echo $d && grep -Eoa "\b(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b" "$d"|sort -u && echo "********************************************************";done| \
-    tee -a $triage_dir/WindowsEventLogs/IPv4-Addresses-in-evtx.txt
+    do
+      echo $d | tee -a $triage_dir/WindowsEventLogs/IPv4-Addresses-in-evtx.txt && \ 
+      grep -Eoa "\b(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b" """$d"""| \
+      sort -u | grep -Ev ^0\|0\.0\.0\|^127\|^224\|^239 |while read line;
+      do
+        a=$(geoiplookup $line 2>/dev/null|awk -F':' '{print $2}'|grep -vi "IP Address not found")
+        echo $line $a  | tee -a $triage_dir/WindowsEventLogs/IPv4-Addresses-in-evtx.txt
+      done
+      echo "*********************************************************" |tee -a $triage_dir/WindowsEventLogs/IPv4-Addresses-in-evtx.txt
+    done
+    
+    echo "EXTERNAL IP ADDRESS SUMMARY" |tee -a $triage_dir/WindowsEventLogs/IPv4-Addresses-in-evtx.txt
+    cat  $triage_dir/WindowsEventLogs/IPv4-Addresses-in-evtx.txt | awk -F',' '{print $2}'| grep  -v '^$'|sort |uniq -c|sort -rn |\
+    tee -a $triage_dir/WindowsEventLogs/IPv4-Addresses-in-evtx.txt 
+      
     # Get Statistics from Security.evtx
     find $triage_dir/WindowsEventLogs/jsonl/ -type f 2>/dev/null | \
     grep -i \/Security.evtx.jsonl| while read d;
@@ -1148,7 +1161,9 @@ function evtxdump(){
       
       echo "SECURITY.EVTX LOGIN TYPES" |tee -a $triage_dir/WindowsEventLogs/Security.evtx-stats.txt 
       /usr/local/src/dfir-scripts/WinEventLogs/jq/logintypescount.sh "$d" |tee -a $triage_dir/WindowsEventLogs/Security.evtx-stats.txt
-      
+      echo "*********************************************************
+      "|tee -a $triage_dir/WindowsEventLogs/Security.evtx-stats.txt 
+            
       echo "SECURITY.EVTX NEW PROCESSES" |tee -a $triage_dir/WindowsEventLogs/Security.evtx-stats.txt 
       /usr/local/src/dfir-scripts/WinEventLogs/jq/newprocesscount.sh "$d" |tee -a $triage_dir/WindowsEventLogs/Security.evtx-stats.txt
 
@@ -1156,7 +1171,7 @@ function evtxdump(){
       /usr/local/src/dfir-scripts/WinEventLogs/jq/failed_logins.sh  "$d" |tee -a $triage_dir/WindowsEventLogs/failed-logins.txt 
       
       echo "SECURITY.EVTX EXPLICIT LOGINS EID4648" |tee -a $triage_dir/WindowsEventLogs/explicit-logins.txt
-      /usr/local/src/dfir-scripts/WinEventLogs/jq/explicit-logins.txt  "$d" |tee -a $triage_dir/WindowsEventLogs/explicit-logins.txt 
+      /usr/local/src/dfir-scripts/WinEventLogs/jq/explicit_logins.sh  "$d" |tee -a $triage_dir/WindowsEventLogs/explicit-logins.txt 
     done
 }
 
