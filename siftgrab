@@ -1141,9 +1141,9 @@ function evtxdump(){
     # Get IPv5 Addresses in EVTX files
     find $triage_dir/WindowsEventLogs/jsonl/ -type f| while read d; 
     do
-      echo $d | tee -a $triage_dir/WindowsEventLogs/IPv4-Addresses-in-evtx.txt && \ 
+      echo $d | tee -a $triage_dir/WindowsEventLogs/IPv4-Addresses-in-evtx.txt  
       grep -Eoa "\b(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b" """$d"""| \
-      sort -u | grep -Ev ^0\|0\.0\.0\|^127\|^224\|^239\|\. |while read line;
+      sort -u | grep -Ev ^0\|0\.0\.0\|^127\|^224\|^239 |while read line;
       do
         a=$(geoiplookup $line 2>/dev/null|awk -F':' '{print $2}'|grep -vi "IP Address not found")
         echo $line $a  | tee -a $triage_dir/WindowsEventLogs/IPv4-Addresses-in-evtx.txt
