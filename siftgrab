@@ -280,7 +280,7 @@ while [ opt != '' ]
            extract_winactivities
            ls /$mount_dir/Users/*/AppData/Local/Microsoft/Windows/WebCache 2>/dev/null || parse_index.dat
            cp_setupapi
-           #ADS_extract
+           ADS_extract
            analyze_mft
            [ "$usn" ] && parse_usn
            #Clean-up
