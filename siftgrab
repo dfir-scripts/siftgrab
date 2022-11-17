@@ -254,6 +254,7 @@ while [ opt != '' ]
            get_evtxsize
            repair_hives
            JLParser
+           lnkinfo
            regrip_software
            rip_system
            rip_security
@@ -685,8 +686,8 @@ function repair_hives(){
   do
     makegreen "Yarp + registryFlush -> reading $d"
     python /usr/local/src/Silv3rhorn/registryFlush.py -f $mount_dir/$winsysdir/$regdir/$d -o $triage_dir/Registry/yarp-registryflush.py
-    ls $triage_dir/Registry/yarp-registryflush.py/$d* 2>/dev/null &&  echo "$d is dirty logs -> merged" |tee -a $triage_dir/Registry/yarp-registryflush.py/Hive-State.txt
-    ls $triage_dir/Registry/yarp-registryflush.py/$d* 2>/dev/null || echo "$d is Clean" |tee -a $triage_dir/Registry/yarp-registryflush.py/Hive-State.txt
+    find $triage_dir/Registry/yarp-registryflush.py/$d* -type f 2>/dev/null && echo "$d is Dirty, logs -> merged" |tee -a $triage_dir/Registry/yarp-registryflush.py/Hive-State.txt
+    find $triage_dir/Registry/yarp-registryflush.py/$d* -type f 2>/dev/null || echo "$d is Clean" |tee -a $triage_dir/Registry/yarp-registryflush.py/Hive-State.txt
   done
   find "$mount_dir/$user_dir/" -maxdepth 2 ! -type l|grep -i ntuser.dat$ |while read ntuser_path;
     do
@@ -695,8 +696,8 @@ function repair_hives(){
       cd $mount_dir/$user_dir/"$user_name"
       makegreen "Yarp + registryFlush -> reading "$user_name"/NTUSER.DAT"
       python /usr/local/src/Silv3rhorn/registryFlush.py -f "$ntuser_path" -o $triage_dir/Registry/yarp-registryflush.py/"$user_name"
-      ls $triage_dir/Registry/yarp-registryflush.py/"$user_name"/NT* 2>/dev/null && echo "$user_name" " is dirty logs -> merged" |tee -a $triage_dir/Registry/yarp-registryflush.py/Hive-State.txt
-      ls $triage_dir/Registry/yarp-registryflush.py/"$user_name"/NT* 2>/dev/null || echo ""$user_name"/NTUSER.DAT is Clean" |tee -a $triage_dir/Registry/yarp-registryflush.py/Hive-State.txt
+      find $triage_dir/Registry/yarp-registryflush.py/${user_name}/${user_name}* -type f 2>/dev/null && echo ${user_name} " is dirty logs -> merged" |tee -a $triage_dir/Registry/yarp-registryflush.py/Hive-State.txt
+      find $triage_dir/Registry/yarp-registryflush.py/${user_name}/${user_name}* -type f 2>/dev/null || echo ${user_name}"/NTUSER.DAT is Clean" |tee -a $triage_dir/Registry/yarp-registryflush.py/Hive-State.txt
       sleep .5
     done
 }
@@ -896,13 +897,34 @@ function JLParser(){
     python /opt/app/JumpList_Lnk_Parser/JLParser.py -p -a /opt/app/JumpList_Lnk_Parser/JLParser_AppID.csv -d $user_dir -o $triage_dir/LNK/JumpList_Lnk_Parser-$comp_name.json
     sleep 1
 
+    header="HITCOUNT,LPATH,NAME,SIZE,TYPE"
+    result=$(cat $triage_dir/LNK/JumpList_Lnk_Parser-$comp_name.json 2>/dev/null|jq -r '.[]|select(.Local_Path!="")|",\(.Local_Path),\(.Source_Name),\(.FileSize),\(.Artifact)"'|sort |uniq -c|sort -rn)
+    [ "$result" ] && echo "Local LNK Summary"|column -t -s "," |tee -a $triage_dir/LNK/JL-stats-$comp_name.txt
+    [ "$result" ] && printf "%s\n%s"  ${header} "${result}"|column -t -s "," |tee -a $triage_dir/LNK/JL-stats-$comp_name.txt
+  
     header="HITCOUNT,PATH,SIZE,TYPE"
-    result=$(cat $triage_dir/LNK/JumpList_Lnk_Parser-$comp_name.json 2>/dev/null|jq -r '.[]|select(.Local_Path!=null and .FileSize!=0)|",\(.Local_Path),\(.FileSize),\(.Artifact)"'|sort |uniq -c|sort -rn)
-    [ "$result" ] && printf "%s\n%s"  ${header} "${result}"|column -t -s "," |tee -a $triage_dir/LNK/JL-stats.txt
+    result=$(cat $triage_dir/LNK/JumpList_Lnk_Parser-$comp_name.json 2>/dev/null|jq -r '.[]|select(.Network_Share_Name!="" or .Network_Providers!="")|",\(.Network_Share_Name),\(.Network_Share_Flags),\(.Network_Providers),\(.Source_Name)"'|sort |uniq -c|sort -rn)
+    [ "$result" ] && echo "Network LNK Summary"|column -t -s "," |tee -a $triage_dir/LNK/JL-stats-$comp_name.txt
+    [ "$result" ] && printf "%s\n%s"  ${header} "${result}"|column -t -s "," |tee -a $triage_dir/LNK/JL-stats-$comp_name.txt
 
+    header="HITCOUNT;DATAFLAGS;NAME"
+    result=$(cat $triage_dir/LNK/JumpList_Lnk_Parser-$comp_name.json 2>/dev/null |jq -r '.[]|select(.Data_Flags!=null and .FileSize!=0)|";\(.Data_Flags);\(.Source_Name)"'|sort |uniq -c)
+    [ "$result" ] && echo "DataFlags"|column -t -s "," |tee -a $triage_dir/LNK/JL-stats-$comp_name.txt
+    [ "$result" ] && printf "%s\n%s"  ${header} "${result}"|column -t -s ";" |tee -a $triage_dir/LNK/JL-stats-$comp_name.txt
+	
     header="HITCOUNT;DATAFLAGS;LOCALPATH"
-    result=$(cat $triage_dir/LNK/JumpList_Lnk_Parser-$comp_name.json 2>/dev/null |jq -r '.[]|select(.Data_Flags!=null and .FileSize!=0)|";\(.Data_Flags);\(.Local_Path)"'|sort |uniq -c)
-    [ "$result" ] && printf "%s\n%s"  ${header} "${result}"|column -t -s ";" |tee -a $triage_dir/LNK/JL-stats.txt
+    result=$(cat $triage_dir/LNK/JumpList_Lnk_Parser-$comp_name.json 2>/dev/null |jq -r '.[]|select(.ShowWindow!="SW_NORMAL")|";\(.ShowWindow);\(.Source_Name)"'|sort |uniq -c)
+    [ "$result" ] && echo "Window Open"|column -t -s "," |tee -a $triage_dir/LNK/JL-stats-$comp_name.txt
+    [ "$result" ] && printf "%s\n%s"  ${header} "${result}"|column -t -s ";" |tee -a $triage_dir/LNK/JL-stats-$comp_name.txt
+}
+
+function lnkinfo(){
+ cd $mount_dir
+  find $mount_dir/$user_dir/*/ -type f|grep lnk$ | while read d;
+  do
+    echo $d && \
+    /usr/bin/lnkinfo -v "$d"  |tee -a $triage_dir/LNK/lnkinfo-$comp_name.txt
+  done
 }
 
 
