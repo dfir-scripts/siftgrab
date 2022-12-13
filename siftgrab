@@ -273,7 +273,7 @@ while [ opt != '' ]
            winservices
            extract_srudb
            parse_current.mdb
-           #bits_parser TODO
+           bits_parser
            evtxdump
            extract_WinEVTX
            zircolite_evtx
@@ -1092,8 +1092,6 @@ function parse_current.mdb(){
     done
 }
 
-#Run Bits_parser  TODO
-
 #Timeline Alternate Data Streams
 function ADS_extract(){
     cd $mount_dir
@@ -1222,7 +1220,7 @@ extract_winactivities(){
 }
 
 #Parse IE History File Index.dat
-parse_index.dat(){
+function parse_index.dat(){
     cd $mount_dir
     makegreen "Searching for any index.dat files"
     cd $mount_dir/$user_dir/
@@ -1240,6 +1238,11 @@ parse_index.dat(){
     done
 }
 
+#Run Bits_Parser.py
+function bits_parser(){
+    python3 /usr/local/src/BitsParser/BitsParser.py -i /mnt/image_mount/ProgramData/Microsoft/Network/Downloader/ --carvedb --carveall |tee -a $triage_dir/BITS/bits_parser.py-$comp_name.csv
+}
+
 # Extract WindowsEvent Logs
 function extract_WinEVTX(){
     cd $mount_dir
@@ -1248,7 +1251,7 @@ function extract_WinEVTX(){
     #Microsoft-Windows-TaskScheduler4Operational.evtx
     find $mount_dir/$winsysdir/$evtxdir -type f 2>/dev/null | grep -i \/Microsoft-Windows-TaskScheduler\%4Operational.evtx$| while read d;
     do
-      python3 /opt/app/dfir-scripts/WinEventLogs/parse_evtx_tasks.py "$d" |tee -a $triage_dir/ScheduledTasks/parse_evtx_tasks.py-$comp_name.csv;
+      /mnt/image_mount/ProgramData/Microsoft/Network/Downloader  "$d" |tee -a $triage_dir/ScheduledTasks/parse_evtx_tasks.py-$comp_name.csv;
     done
 
     #Microsoft-Windows-Bits-Client\%4Operational.evtx
@@ -1258,6 +1261,13 @@ function extract_WinEVTX(){
     done
     #Find RDP Connections
     python3 /opt/app/dfir-scripts/WinEventLogs/parse_evtx_RDP.py $mount_dir/$winsysdir/$evtxdir |tee -a $triage_dir/RDP/parse_evtx_RDP.py-$comp_name.csv;
+    /usr/local/src/dfir-scripts/WinEventLogs/RDP_Diagram.sh -f $triage_dir/RDP/parse_evtx_RDP.py-$comp_name.csv -o $triage_dir/RDP/RDP_Diagram.sh-$comp_name.png
+
+    #Check for account changes
+    find $mount_dir/$winsysdir/$evtxdir -type f 2>/dev/null | grep -i \/Security.evtx$| while read d;
+    do
+      python3 /opt/app/dfir-scripts/WinEventLogs/parse_evtx_account_changes.py "$d" |tee -a $triage_dir/WindowsEventLogs/parse_evtx_Account_Changes.py-$comp_name.csv;
+    done
 }
 
 # Extract WindowsEvent Logs to jsonl
