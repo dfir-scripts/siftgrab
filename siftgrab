@@ -283,6 +283,7 @@ while [ opt != '' ]
            ls /$mount_dir/Users/*/AppData/Local/Microsoft/Windows/WebCache 2>/dev/null || parse_index.dat
            cp_setupapi
            ADS_extract
+           scan_for_lolbas
            analyze_mft
            [ "$usn" ] && parse_usn
            #Clean-up
@@ -422,7 +423,7 @@ function get_computer_name(){
 
 #Create Output Directory
 function create_triage_dir(){
-triage_dirs=("ActivitiesCache" "Alert" "BITS" "Browser_Activity" "Current.mdb" "LNK" "MFT" "OBJECTS.DATA" "PowerShell" "Prefetch" "RDP" "Registry/Regripper/Account_Info" "Registry/Regripper/File_Access" "Registry/Regripper/Program_Execution" "Registry/Regripper/Run_Keys" "Registry/Regripper/Settings" "Registry/Regripper/System_Info/Network" "Registry/Regripper/System_Info/Software" "USB" "Registry/Regripper/USERS" "Registry/Regripper/User_Searches" "Registry/yarp-registryflush.py" "Logs" "ScheduledTasks" "Services" "SRUDB.dat" "Timeline" "USNJRNL" "WindowsEventLogs")
+triage_dirs=("ActivitiesCache" "Alert" "BITS" "Browser_Activity" "Current.mdb" "LNK" "MFT" "OBJECTS.DATA" "PowerShell" "Prefetch" "RDP" "Registry/Regripper/Account_Info" "Registry/Regripper/File_Access" "Registry/Regripper/Program_Execution" "Registry/Regripper/Run_Keys" "Registry/Regripper/Settings" "Registry/Regripper/System_Info/Network" "Registry/Regripper/System_Info/Software" "USB" "Registry/Regripper/USERS" "Registry/Regripper/User_Searches" "Registry/yarp-registryflush.py" "Logs" "ScheduledTasks" "Services" "SRUDB.dat" "Timeline" "USNJRNL" "WindowsEventLogs" "lolbas")
     for dir_names in "${triage_dirs[@]}";
     do
       mkdir -p $triage_dir/$dir_names
@@ -859,9 +860,6 @@ function regrip_sam(){
     sleep 1
     find $mount_dir/$winsysdir/$regdir -maxdepth 1 -type f 2>/dev/null | grep -i "\/sam$"| while read d;
     do
-      rip.pl -d -r "$d" |grep -q "Hive is not dirty" && \
-      echo SAM Hive is Clean |tee -a $triage_dir/Registry/yarp-registryflush/Hive-State-$comp_name.txt||\
-      echo SAM Hive is Dirty |tee -a $triage_dir/Registry/yarp-registryflush/Hive-State-$comp_name.txt;
       rip.pl -r "$d" -a |tee -a $triage_dir/Registry/Regripper/SAM-$comp_name.txt;
     done
     find $mount_dir/$winsysdir/$regdir -maxdepth 1 -type f 2>/dev/null | grep -i "\/sam$" | while read d;
@@ -891,32 +889,13 @@ function del_no_result(){
   done
 }
 
-
 function JLParser(){
     cd $mount_dir
     makegreen "Running JLParse.py extracting LNKS and Jumplists to json"
     python /opt/app/JumpList_Lnk_Parser/JLParser.py -p -a /opt/app/JumpList_Lnk_Parser/JLParser_AppID.csv -d $user_dir -o $triage_dir/LNK/JumpList_Lnk_Parser-$comp_name.json
     sleep 1
 
-    header="HITCOUNT,LPATH,NAME,SIZE,TYPE"
-    result=$(cat $triage_dir/LNK/JumpList_Lnk_Parser-$comp_name.json 2>/dev/null|jq -r '.[]|select(.Local_Path!="")|",\(.Local_Path),\(.Source_Name),\(.FileSize),\(.Artifact)"'|sort |uniq -c|sort -rn)
-    [ "$result" ] && echo "Local LNK Summary"|column -t -s "," |tee -a $triage_dir/LNK/JL-stats-$comp_name.txt
-    [ "$result" ] && printf "%s\n%s"  ${header} "${result}"|column -t -s "," |tee -a $triage_dir/LNK/JL-stats-$comp_name.txt
-  
-    header="HITCOUNT,PATH,SIZE,TYPE"
-    result=$(cat $triage_dir/LNK/JumpList_Lnk_Parser-$comp_name.json 2>/dev/null|jq -r '.[]|select(.Network_Share_Name!="" or .Network_Providers!="")|",\(.Network_Share_Name),\(.Network_Share_Flags),\(.Network_Providers),\(.Source_Name)"'|sort |uniq -c|sort -rn)
-    [ "$result" ] && echo "Network LNK Summary"|column -t -s "," |tee -a $triage_dir/LNK/JL-stats-$comp_name.txt
-    [ "$result" ] && printf "%s\n%s"  ${header} "${result}"|column -t -s "," |tee -a $triage_dir/LNK/JL-stats-$comp_name.txt
-
-    header="HITCOUNT;DATAFLAGS;NAME"
-    result=$(cat $triage_dir/LNK/JumpList_Lnk_Parser-$comp_name.json 2>/dev/null |jq -r '.[]|select(.Data_Flags!=null and .FileSize!=0)|";\(.Data_Flags);\(.Source_Name)"'|sort |uniq -c)
-    [ "$result" ] && echo "DataFlags"|column -t -s "," |tee -a $triage_dir/LNK/JL-stats-$comp_name.txt
-    [ "$result" ] && printf "%s\n%s"  ${header} "${result}"|column -t -s ";" |tee -a $triage_dir/LNK/JL-stats-$comp_name.txt
-	
-    header="HITCOUNT;DATAFLAGS;LOCALPATH"
-    result=$(cat $triage_dir/LNK/JumpList_Lnk_Parser-$comp_name.json 2>/dev/null |jq -r '.[]|select(.ShowWindow!="SW_NORMAL")|";\(.ShowWindow);\(.Source_Name)"'|sort |uniq -c)
-    [ "$result" ] && echo "Window Open"|column -t -s "," |tee -a $triage_dir/LNK/JL-stats-$comp_name.txt
-    [ "$result" ] && printf "%s\n%s"  ${header} "${result}"|column -t -s ";" |tee -a $triage_dir/LNK/JL-stats-$comp_name.txt
+    /usr/local/src/dfir-scripts/WinEventLogs/jq/JLParser-stats.sh $triage_dir/LNK/JumpList_Lnk_Parser-$comp_name.json |tee -a $triage_dir/LNK/JL-stats-$comp_name.txt
 }
 
 function lnkinfo(){
@@ -1056,7 +1035,6 @@ function firefox2tln(){
       done
 }
 
-
 function extract_webcacheV(){
     cd $mount_dir/$user_dir/
     makegreen "Extracting any IE WebcacheV0x.dat files (esedbexport)"
@@ -1083,7 +1061,6 @@ function extract_srudb(){
     done
 }
 
-
 function parse_current.mdb(){
     cd $mount_dir
     makegreen "Parse Current.mdb file"
@@ -1096,7 +1073,6 @@ function parse_current.mdb(){
 #Timeline Alternate Data Streams
 function ADS_extract(){
     cd $mount_dir
-
     #  scan mounted NTFS disk Alternate Data Streams and Timestamps
     [ "$(getfattr -n ntfs.streams.list $mount_dir 2>/dev/null)" ]  && makegreen "Extracting Alternate Data Streams" &&\
     getfattr -Rn ntfs.streams.list . 2>/dev/null |\
@@ -1112,7 +1088,6 @@ function ADS_extract(){
     done
       cat $case_dir/Triage/AlternateDataStreams-$comp_name.csv |tee -a $tempfile
       cat $case_dir/Triage/AlternateDataStreams-$comp_name.csv |grep Zone.Identifier| tee -a $triage_dir/Browser_Activity/Zone.Identifier-$comp_name.csv
-
 }
 
 #Timeline Prefetch and extract metadata
@@ -1142,7 +1117,6 @@ function winservices(){
     sleep 1
     find $mount_dir/$winsysdir/$regdir -maxdepth 1  -type f 2>/dev/null | grep -m1 -i \/system$| while read d;
     do
-      echo "python3 /opt/app/dfir-scripts/python/winservices.py "$d" |tee -a $triage_dir/Services/winservices.py-$comp_name.csv;"
       python3 /opt/app/dfir-scripts/python/winservices.py "$d" |tee -a $triage_dir/Services/winservices.py-$comp_name.csv;
     done
 
@@ -1254,19 +1228,22 @@ function extract_WinEVTX(){
     #Microsoft-Windows-TaskScheduler4Operational.evtx
     find $mount_dir/$winsysdir/$evtxdir -type f 2>/dev/null | grep -i \/Microsoft-Windows-TaskScheduler\%4Operational.evtx$| while read d;
     do
-      /mnt/image_mount/ProgramData/Microsoft/Network/Downloader  "$d" |tee -a $triage_dir/ScheduledTasks/parse_evtx_tasks.py-$comp_name.csv;
+      python3 /opt/app/dfir-scripts/WinEventLogs/parse_evtx_tasks.py  "$d" |tee -a $triage_dir/ScheduledTasks/parse_evtx_tasks.py-$comp_name.csv;
     done
 
     #Microsoft-Windows-Bits-Client\%4Operational.evtx
+    makegreen "Searching for BITS Transactions"
     find $mount_dir/$winsysdir/$evtxdir -type f 2>/dev/null | grep -i \/Microsoft-Windows-Bits-Client\%4Operational.evtx$| while read d;
     do
       python3 /opt/app/dfir-scripts/WinEventLogs/parse_evtx_BITS.py "$d" |tee -a $triage_dir/BITS/parse_evtx_BITS.py-$comp_name.csv;
     done
     #Find RDP Connections
+    makegreen "Searching for RDP Sessions"
     python3 /opt/app/dfir-scripts/WinEventLogs/parse_evtx_RDP.py $mount_dir/$winsysdir/$evtxdir |tee -a $triage_dir/RDP/parse_evtx_RDP.py-$comp_name.csv;
     /usr/local/src/dfir-scripts/WinEventLogs/RDP_Diagram.sh -f $triage_dir/RDP/parse_evtx_RDP.py-$comp_name.csv -o $triage_dir/RDP/RDP_Diagram.sh-$comp_name.png
 
     #Check for account changes
+    makegreen "Searching for Account Changes in Windows Event Logs"
     find $mount_dir/$winsysdir/$evtxdir -type f 2>/dev/null | grep -i \/Security.evtx$| while read d;
     do
       python3 /opt/app/dfir-scripts/WinEventLogs/parse_evtx_account_changes.py "$d" |tee -a $triage_dir/WindowsEventLogs/parse_evtx_Account_Changes.py-$comp_name.csv;
@@ -1290,7 +1267,7 @@ function evtxdump(){
     grep Microsoft-Windows-PowerShell%4Operational.evtx.jsonl| while read d;
     do
       cat "$d" |jq -j '.Event|select(.EventData.ScriptBlockText !=null)|.System.Computer,.System.TimeCreated."#attributes".SystemTime,.EventData.Path,.System.Security."#attributes".UserID,.EventData.ScriptBlockText,.System.Channel' | \
-      tee -a $triage_dir/PowerShell/PowerShellScriptBlocks.txt
+      tee -a $triage_dir/PowerShell/PowerShellScriptBlocks-$comp_name.txt
     done
 
     find $triage_dir/WindowsEventLogs/evtx_dump/ -type f 2>/dev/null | \
@@ -1298,60 +1275,57 @@ function evtxdump(){
     do
       cat "$d" | \
       jq  '.Event|select(.EventData.Data."#text"!=null)|.System.Computer,.System.TimeCreated."#attributes".SystemTime,.EventData.Data,.System.Channel'| \
-      tee -a $triage_dir/PowerShell/PowerShell-HostApplication.txt
+      tee -a $triage_dir/PowerShell/PowerShell-HostApplication-$comp_name.txt
     done
 
     # Get IPv4 Addresses in EVTX files
     find $triage_dir/WindowsEventLogs/evtx_dump/ -type f | while read d;
     do
-      echo $d | tee -a $triage_dir/WindowsEventLogs/IPv4-Addresses-in-evtx.txt
+      echo $d | tee -a $triage_dir/WindowsEventLogs/IPv4-Addresses-in-evtx-$comp_name.txt
       grep -Eoa "\b(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b" """$d"""| \
       sort -u | grep -Ev ^0\|0\.0\.0\|^127\|^224\|^239 2>/dev/null |while read line;
       do
         a=$(geoiplookup $line 2>/dev/null|awk -F':' '{print $2}'|grep -vi "IP Address not found")
-        echo $line $a  | tee -a $triage_dir/WindowsEventLogs/IPv4-Addresses-in-evtx.txt
+        echo $line $a  | tee -a $triage_dir/WindowsEventLogs/IPv4-Addresses-in-evtx-$comp_name.txt
       done
-      echo "*********************************************************" |tee -a $triage_dir/WindowsEventLogs/IPv4-Addresses-in-evtx.txt
+      echo "*********************************************************" |tee -a $triage_dir/WindowsEventLogs/IPv4-Addresses-in-evtx-$comp_name.txt
     done
 
-    echo "EXTERNAL IP ADDRESS SUMMARY" |tee -a $triage_dir/WindowsEventLogs/IPv4-Addresses-in-evtx.txt
-    cat  $triage_dir/WindowsEventLogs/IPv4-Addresses-in-evtx.txt | awk -F',' '{print $2}'| grep  -v '^$'|sort |uniq -c|sort -rn |\
-    tee -a $triage_dir/WindowsEventLogs/IPv4-Addresses-in-evtx.txt
+    echo "EXTERNAL IP ADDRESS SUMMARY" |tee -a $triage_dir/WindowsEventLogs/IPv4-Addresses-in-evtx-$comp_name.txt
+    cat  $triage_dir/WindowsEventLogs/IPv4-Addresses-in-evtx-$comp_name.txt | awk -F',' '{print $2}'| grep  -v '^$'|sort |uniq -c|sort -rn |\
+    tee -a $triage_dir/WindowsEventLogs/IPv4-Addresses-in-evtx-$comp_name.txt
 
     # Get Statistics from Security.evtx
     find $triage_dir/WindowsEventLogs/evtx_dump/ -type f 2>/dev/null | \
     grep -i \/Security.evtx.jsonl| while read d;
     do
-      echo "SECURITY.EVTX EVENT COUNT" |tee -a $triage_dir/WindowsEventLogs/Security.evtx-stats.txt
-      /opt/app/dfir-scripts/WinEventLogs/jq/security.evtx.count.sh "$d" |tee -a $triage_dir/WindowsEventLogs/Security.evtx-stats.txt
+      echo "SECURITY.EVTX EVENT COUNT" |tee -a $triage_dir/WindowsEventLogs/Security.evtx-stats-$comp_name.txt
+      /opt/app/dfir-scripts/WinEventLogs/jq/security.evtx.count.sh "$d" |tee -a $triage_dir/WindowsEventLogs/Security.evtx-stats-$comp_name.txt
       echo "*********************************************************
-      "|tee -a $triage_dir/WindowsEventLogs/Security.evtx-stats.txt
+      "|tee -a $triage_dir/WindowsEventLogs/Security.evtx-stats-$comp_name.txt
 
-      echo "SECURITY.EVTX LOGIN TYPES" |tee -a $triage_dir/WindowsEventLogs/Security.evtx-stats.txt
-      /opt/app/dfir-scripts/WinEventLogs/jq/logintypescount.sh "$d" |tee -a $triage_dir/WindowsEventLogs/Security.evtx-stats.txt
+      echo "SECURITY.EVTX LOGIN TYPES" |tee -a $triage_dir/WindowsEventLogs/Security.evtx-stats-$comp_name.txt
+      /opt/app/dfir-scripts/WinEventLogs/jq/logintypescount.sh "$d" |tee -a $triage_dir/WindowsEventLogs/Security.evtx-stats-$comp_name.txt
       echo "*********************************************************
-      "|tee -a $triage_dir/WindowsEventLogs/Security.evtx-stats.txt
+      "|tee -a $triage_dir/WindowsEventLogs/Security.evtx-stats-$comp_name.txt
 
-      echo "SECURITY.EVTX NEW PROCESSES" |tee -a $triage_dir/WindowsEventLogs/Security.evtx-stats.txt
-      /opt/app/dfir-scripts/WinEventLogs/jq/newprocesscount.sh "$d" |tee -a $triage_dir/WindowsEventLogs/Security.evtx-stats.txt
+      echo "SECURITY.EVTX NEW PROCESSES" |tee -a $triage_dir/WindowsEventLogs/Security.evtx-stats-$comp_name.txt
+      /opt/app/dfir-scripts/WinEventLogs/jq/newprocesscount.sh "$d" |tee -a $triage_dir/WindowsEventLogs/Security.evtx-stats-$comp_name.txt
 
-      echo "SECURITY.EVTX FAILED LOGINS" |tee -a $triage_dir/WindowsEventLogs/failed-logins.txt
-      /opt/app/dfir-scripts/WinEventLogs/jq/failed_logins.sh  "$d" |tee -a $triage_dir/WindowsEventLogs/failed-logins.txt
+      echo "SECURITY.EVTX FAILED LOGINS" |tee -a $triage_dir/WindowsEventLogs/failed-logins-$comp_name.txt
+      /opt/app/dfir-scripts/WinEventLogs/jq/failed_logins.sh  "$d" |tee -a $triage_dir/WindowsEventLogs/failed-logins-$comp_name.txt
 
-      echo "SECURITY.EVTX EXPLICIT LOGINS EID4648" |tee -a $triage_dir/WindowsEventLogs/explicit-logins.txt
-      /opt/app/dfir-scripts/WinEventLogs/jq/explicit_logins.sh  "$d" |tee -a $triage_dir/WindowsEventLogs/explicit-logins.txt
-
-
+      echo "SECURITY.EVTX EXPLICIT LOGINS EID4648" |tee -a $triage_dir/WindowsEventLogs/explicit-logins-$comp_name.txt
+      /opt/app/dfir-scripts/WinEventLogs/jq/explicit_logins.sh  "$d" |tee -a $triage_dir/WindowsEventLogs/explicit-logins-$comp_name.txt
     done
 
     # Get Information from Task Scheduler
-    find  find $triage_dir/WindowsEventLogs/evtx_dump/ -type f 2>/dev/null | \
+    find $triage_dir/WindowsEventLogs/evtx_dump/ -type f 2>/dev/null | \
     grep -i \/Microsoft-Windows-TaskScheduler\%4Operational.evtx.jsonl$| while read d;
     do
-      echo "Scheduled Task Event Summary" |tee -a  $triage_dir/SheduledTasks/task-scheduler-info.txt
-      /opt/app/dfir-scripts/WinEventLogs/jq/task-scheduler-summary.sh "$d" |tee -a $triage_dir/ScheduledTasks/task-scheduler-info.txt
-      echo "*********************************************************
-      "|tee -a  $triage_dir/ScheduledTasks/task-scheduler-info.txt
+      echo "Scheduled Task Event Summary" |tee -a  $triage_dir/SheduledTasks/task-scheduler-info-$comp_name.txt
+      /opt/app/dfir-scripts/WinEventLogs/jq/task-scheduler-summary.sh "$d" |tee -a $triage_dir/ScheduledTasks/task-scheduler-info-$comp_name.txt
+      echo "*********************************************************"|tee -a  $triage_dir/ScheduledTasks/task-scheduler-info-$comp_name.txt
     done
 
 }
@@ -1363,8 +1337,13 @@ function zircolite_evtx(){
     while read d;
     do
       evtx_jsonl=$(echo "$d" |awk -F'dump/' '{print $NF}')
-      python $zpath/zircolite.py -j -e "$d" -r $zpath/rules/rules_windows_generic_full.json -c $zpath/config/fieldMappings.json -o $triage_dir/Alert/Zircolite-"$evtx_jsonl".json -l $triage_dir/Alert/Zircolite-Alert.log
+      python $zpath/zircolite.py -j -e "$d" -r $zpath/rules/rules_windows_generic_full.json -c $zpath/config/fieldMappings.json -o $triage_dir/Alert/Zircolite-"$evtx_jsonl".json -l $triage_dir/Alert/Zircolite-Alert-$comp_name.log
     done
+}
+
+function scan_for_lolbas(){
+find $triage_dir -type f |grep -Ei jsonl$\|csv$\|txt$ |grep -Ev MFT\|TLN\|Clsid|while read d; do python /usr/local/src/dfir-scripts/WinEventLogs/scanforlolbas.py -p "$d" -l /usr/local/src/lolbas/lolbas.csv |tee -a $triage_dir/lolbas/lolbas-$comp_name.txt;done
+
 }
 
 #Extract MFT to body file and then to TLN and csv files
