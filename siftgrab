@@ -121,7 +121,6 @@ Guymager,https://guymager.sourceforge.io/
 ddrescue,https://www.gnu.org/software/ddrescue/
 photorec/testdisk,https://www.cgsecurity.org/
 Foremost,http://foremost.sourceforge.net/
-R-Linux,https://www.r-studio.com/free-linux-recovery-help/
 dc3dd,https://sourceforge.net/projects/dc3dd/
 afro,https://github.com/cugu/
 xmount,https://www.pinguin.lu/xmount
@@ -278,13 +277,13 @@ while [ opt != '' ]
            evtxdump
            extract_WinEVTX
            zircolite_evtx
+           analyze_mft
+           ADS_extract                      
            consolidate_timeline
            extract_winactivities
            ls /$mount_dir/Users/*/AppData/Local/Microsoft/Windows/WebCache 2>/dev/null || parse_index.dat
            cp_setupapi
-           ADS_extract
            scan_for_lolbas
-           analyze_mft
            [ "$usn" ] && parse_usn
            #Clean-up
            find $case_dir -empty -delete
@@ -985,16 +984,18 @@ function chrome2tln(){
     done
 
     # Copy Files to Timeline Temp File
-    find $triage_dir/Browser_Activity/ -type d |grep "Chrome" | while read d;
+    find $triage_dir/Browser_Activity/ -type f |grep Chrome |while read d;
     do
-      echo "$d"| while read f;
-        do
-        timestamp=$(echo "$f"| awk -F',' '{print $1}'| grep -E '^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[1-2][0-9]|3[0-1]) (2[0-3]|[01][0-9]):[0-5][0-9]:[0-5][0-9]')
-          [ "$timestamp" != "" ] && tlntime=$(date -d "$timestamp"  +"%s" 2>/dev/null)
-          tlninfo=$(echo "$f"| awk -F',' '{print "|"$2"|"$3"|"$4"|"$5}')
-          [ "$timestamp" != "" ] && echo $tlntime$tlninfo | >> $tempfile
-        done
+      cat "$d"|while read line;
+      do 
+        timestamp=$(echo $line| awk -F',' '{print $1}'| grep -E '^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[1-2][0-9]|3[0-1]) (2[0-3]|[01][0-9]):[0-5][0-9]:[0-5][0-9]')
+        [ "$timestamp" != "" ] && tlntime=$(date -d "$timestamp"  +"%s" 2>/dev/null)
+        [ "$tlntime" != "" ] && tlninfo=$(echo "$f"| awk -F',' '{print "|"$2"|"$3"|"$4"|"$5}')
+        tlninfo=$(echo "$line"| awk -F',' '{print "|"$2"|"$3"|"$4"|"$5}')
+        echo $tlntime$tlninfo | tee -a $tempfile
+        read -n1 -r -p "Press any key to continue..." key
       done
+    done
 }
 
 #Timeline Firefox metadata
@@ -1030,7 +1031,7 @@ function firefox2tln(){
         timestamp=$(echo "$f"| awk -F',' '{print $1}'| grep -E '^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[1-2][0-9]|3[0-1]) (2[0-3]|[01][0-9]):[0-5][0-9]:[0-5][0-9]')
           [ "$timestamp" != "" ] && tlntime=$(date -d "$timestamp"  +"%s" 2>/dev/null)
           tlninfo=$(echo "$f"| awk -F',' '{print "|"$2"|"$3"|"$4"|"$5}')
-          [ "$timestamp" != "" ] && echo $tlntime$tlninfo | >> $tempfile
+          [ "$tlninfo" != "" ] && echo $tlntime$tlninfo |tee -a  >> $tempfile
         done
       done
 }
@@ -1127,7 +1128,7 @@ function winservices(){
           timestamp=$(echo "$f" awk -F',' '{print $1}'| grep -Eo '^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[1-2][0-9]|3[0-1]) (2[0-3]|[01][0-9]):[0-5][0-9]:[0-5][0-9]')
           tlntime=$(date -d "$timestamp"  +"%s" 2>/dev/null)
           tlninfo=$(echo "$f"| awk -F',' '{print "||[Service Last Write]: "$2","$3","$5","$7}')
-          echo $tlntime"|Reg|"$comp_name$tlninfo |tee -a $tempfile
+          echo $tlntime"|Svc|"$comp_name$tlninfo |tee -a $tempfile
         done
     done
 }
@@ -1151,6 +1152,13 @@ function cp_winlogs(){
     do
       cp "$d" $triage_dir/USB/setupapi.dev.log-$comp_name.txt 2>/dev/null;
     done
+    sudo find $windir/Logs -type f 2>/dev/null|grep -vi etl$ |sed 's|^\./||'|sed 's/ /\\ /g'|while read d;
+    do 
+      echo "\""$d"\"" && sudo rsync -aRq --include '*log' --exclude '*etl' """$d""" "$triage_dir/Logs";done
+    sudo find $winsysdir/Logs -type f 2>/dev/null|grep -vi etl$ |sed 's|^\./||'|sed 's/ /\\ /g'|while read d; 
+    do 
+      echo "\""$d"\"" && sudo rsync -aRq --include '*log' --exclude '*etl'  """$d""" "$triage_dir/Logs";
+    done
 }
 
 Run Jobparse.py and Extract Windows Event Log: TaskScheduler%4operational.evtx
@@ -1163,9 +1171,6 @@ function extract_Jobs(){
       echo "######## $d ########" |tee -a $triage_dir/ScheduledTasks/jobsparser.py-$comp_name.txt
       python2 /usr/local/bin/jobparser.py -d "$d" |tee -a $triage_dir/ScheduledTasks/jobsparser.py-$comp_name.txt
     done
-    cd $mount_dir
-    sudo find $windir/Logs -type f 2>/dev/null|sed 's|^\./||'|sed 's/ /\\ /g'|while read d; do echo "\""$d"\"" && sudo rsync -aRq """$d""" "$triage_dir/Logs";done
-    sudo find $winsysdir/Logs -type f 2>/dev/null|sed 's|^\./||'|sed 's/ /\\ /g'|while read d; do echo "\""$d"\"" && sudo rsync -aRq """$d""" "$triage_dir/Logs";done
 }
 
 #Parse OBJECTS.DATA file
@@ -1357,6 +1362,7 @@ function analyze_mft(){
     cat $triage_dir/Timeline/MFT-$comp_name.TLN.txt | awk -F'|' '{$1=strftime("%Y-%m-%d %H:%M:%S",$1)}{print $1","$2","$3","$4","$5}'| \
     tee -a $triage_dir/Timeline/MFT-$comp_name.csv
     mft_dump \$MFT -o jsonl -f $triage_dir/MFT/MFT_Dump-$comp_name.jsonl
+    cat $triage_dir/Timeline/MFT-$comp_name.TLN.txt |while read d; do grep -E -i \.lnk$\|\.msi$\|\.exe$\|\.ps1$\|\.hta$\|\.tmp$\|\.rar$\|\.bat\|\.cmd$\|\.vbe$\|\.vbs$\|\.zip  | tee -a $tempfile;done
 }
 
 #Extract $USNJRNL:$J to TLN
