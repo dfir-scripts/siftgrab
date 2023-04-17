@@ -4,7 +4,7 @@ function read_me(){
 echo "
 ##############################################################################################
 siftgrab is an automated environment for running multiple open source forensic tools at once to examine Windows systems in a Linux evnironment.
-Tested on Ubuntu, Kali, Windows WSL2 Ubuntu and SANS SiFT
+Tested on Ubuntu, Kali, Windows WSL2 Ubuntu
 
 
 Work flow
@@ -22,7 +22,7 @@ Work flow
        /mnt/bde
        /mnt/smb
        /cases
-......./opt/app/<open source tools directories>
+       /opt/app/<open source tools directories>
 
   To access the siftgrab menu simply type: sudo siftgrab
 
@@ -122,10 +122,9 @@ ddrescue,https://www.gnu.org/software/ddrescue/
 photorec/testdisk,https://www.cgsecurity.org/
 Foremost,http://foremost.sourceforge.net/
 dc3dd,https://sourceforge.net/projects/dc3dd/
-afro,https://github.com/cugu/
 xmount,https://www.pinguin.lu/xmount
 afflib-tools,http://www.afflib.org/
-exfat-utils,https://github.com/relan/exfat
+exfatprogs,https://launchpad.net/ubuntu/+source/exfatprogs
 qemu-utils,https://www.qemu.org/download/
 ifuse,https://github.com/libimobiledevice/ifuse
 gparted,https://gparted.org/
@@ -137,21 +136,16 @@ jobparser,https://github.com/gleeda
 bits_parser,https://github.com/ANSSI-FR/bits_parser
 Hindsight,https://github.com/obsidianforensics/hindsight
 INDXParse.py,https://github.com/williballenthin/INDXParse
-chainsaw,https://github.com/countercept/chainsaw/
-clamtk,https://github.com/dave-theunsub/clamtk
 feh,https://feh.finalrewind.org/
 eog,https://help.gnome.org/users/eog/stable/
-glogg,https://github.com/nickbnf/glogg
 CyberChef,https://github.com/gchq/CyberChef
 binwalk,https://github.com/ReFirmLabs/binwalk
 graphviz,https://graphviz.org/
 geoip-database,https://www.maxmind.com
 Volatility3,https://github.com/volatilityfoundation/
-NTDSExtract,https://github.com/csababarta/ntdsxtract
 Didier Stevens Suite,https://blog.didierstevens.com/didier-stevens-suite/
 DEXRAY,https://www.hexacorn.com/products_and_freebies.html
 iocextract,https://github.com/InQuest/python-iocextract
-stegosuite,https://github.com/osde8info/stegosuite
 oletools,https://github.com/decalage2/oletools
 pefile,https://github.com/erocarrera/pefile
 Density Scout,https://cert.at/en/downloads/software/software-densityscout
@@ -251,6 +245,7 @@ while [ opt != '' ]
            create_triage_dir
            get_usnjrlnsize
            get_evtxsize
+           source /envs/dfir/bin/activate
            repair_hives
            JLParser
            lnkinfo
@@ -268,24 +263,24 @@ while [ opt != '' ]
            recbin2tln
            chrome2tln
            firefox2tln
-           cp_winlogs
+           cp_artifacts
            extract_webcacheV
            winservices
-           extract_srudb
+           #extract_srudb
            parse_current.mdb
            bits_parser
            evtxdump
            extract_WinEVTX
            zircolite_evtx
            analyze_mft
-           ADS_extract                      
+           ADS_extract
            consolidate_timeline
            extract_winactivities
            ls /$mount_dir/Users/*/AppData/Local/Microsoft/Windows/WebCache 2>/dev/null || parse_index.dat
-           cp_setupapi
            scan_for_lolbas
            [ "$usn" ] && parse_usn
            #Clean-up
+           deactivate
            find $case_dir -empty -delete
            makegreen "Removing Duplicates..."
            echo "Please Wait..."
@@ -383,11 +378,13 @@ function set_dsource_path(){
       [ ! -d "${case_dir}" ] && makered "Path does not exist.." && sleep 1 && show_menu
       case_dir="$case_dir/$comp_name"
       triage_dir="$case_dir/Triage"
+      artifact_dir="$case_dir/Artifact"
 }
 function check_dsource_path(){
       [ -d "$triage_dir" ] && echo "$case_dir already exists! overwrite?" && yes-no && rm -r $triage_dir/ && quit="no"
       [ -d "$triage_dir" ] && [ "$quit" != "no" ] && exit
       mkdir -p $triage_dir
+      mkdir -p $artifact_dir
       echo "Case Folder =>  $case_dir"
 }
 
@@ -686,7 +683,7 @@ function repair_hives(){
   while read d;
   do
     makegreen "Yarp + registryFlush -> reading $d"
-    python /usr/local/src/Silv3rhorn/registryFlush.py -f $mount_dir/$winsysdir/$regdir/$d -o $triage_dir/Registry/yarp-registryflush.py
+    /envs/dfir/bin/python3 /usr/local/src/Silv3rhorn/registryFlush.py -f $mount_dir/$winsysdir/$regdir/$d -o $triage_dir/Registry/yarp-registryflush.py
     find $triage_dir/Registry/yarp-registryflush.py/$d* -type f 2>/dev/null && echo "$d is Dirty, logs -> merged" |tee -a $triage_dir/Registry/yarp-registryflush.py/Hive-State.txt
     find $triage_dir/Registry/yarp-registryflush.py/$d* -type f 2>/dev/null || echo "$d is Clean" |tee -a $triage_dir/Registry/yarp-registryflush.py/Hive-State.txt
   done
@@ -696,7 +693,7 @@ function repair_hives(){
       mkdir -p $triage_dir/Registry/yarp-registryflush.py/"$user_name"
       cd $mount_dir/$user_dir/"$user_name"
       makegreen "Yarp + registryFlush -> reading "$user_name"/NTUSER.DAT"
-      python /usr/local/src/Silv3rhorn/registryFlush.py -f "$ntuser_path" -o $triage_dir/Registry/yarp-registryflush.py/"$user_name"
+      /envs/dfir/bin/python3 /usr/local/src/Silv3rhorn/registryFlush.py -f "$ntuser_path" -o $triage_dir/Registry/yarp-registryflush.py/"$user_name"
       find $triage_dir/Registry/yarp-registryflush.py/${user_name}/${user_name}* -type f 2>/dev/null && echo ${user_name} " is dirty logs -> merged" |tee -a $triage_dir/Registry/yarp-registryflush.py/Hive-State.txt
       find $triage_dir/Registry/yarp-registryflush.py/${user_name}/${user_name}* -type f 2>/dev/null || echo ${user_name}"/NTUSER.DAT is Clean" |tee -a $triage_dir/Registry/yarp-registryflush.py/Hive-State.txt
       sleep .5
@@ -734,8 +731,6 @@ function regrip_software(){
       rip.pl -aT -r "$d" |sed "s/|||/|${comp_name}|${user_name}|/" >> $tempfile
       rip.pl -r "$d" -p tasks |tee -a $triage_dir/ScheduledTasks/Regripper-Tasks-$comp_name.txt
       rip.pl -r "$d" -p taskcache |tee -a $triage_dir/ScheduledTasks/Regripper-TaskCache-$comp_name.txt
-      python /usr/share/doc/python3-impacket/examples/registry-read.py "$d" walk -name \
-      Microsoft\\Windows\ NT\\CurrentVersion\\Schedule\\TaskCache\\Tree |tee -a $triage_dir/ScheduledTasks/impacket-TaskCacheTree-$comp_name.txt;
     done
 }
 
@@ -891,7 +886,7 @@ function del_no_result(){
 function JLParser(){
     cd $mount_dir
     makegreen "Running JLParse.py extracting LNKS and Jumplists to json"
-    python /opt/app/JumpList_Lnk_Parser/JLParser.py -p -a /opt/app/JumpList_Lnk_Parser/JLParser_AppID.csv -d $user_dir -o $triage_dir/LNK/JumpList_Lnk_Parser-$comp_name.json
+    /envs/dfir/bin/python3 /opt/app/JumpList_Lnk_Parser/JLParser.py -p -a /opt/app/JumpList_Lnk_Parser/JLParser_AppID.csv -d $user_dir -o $triage_dir/LNK/JumpList_Lnk_Parser-$comp_name.json
     sleep 1
 
     /usr/local/src/dfir-scripts/WinEventLogs/jq/JLParser-stats.sh $triage_dir/LNK/JumpList_Lnk_Parser-$comp_name.json |tee -a $triage_dir/LNK/JL-stats-$comp_name.txt
@@ -933,7 +928,7 @@ function recbin2tln(){
 function chrome2tln(){
     makegreen "Extracting Any CHROME HISTORY and DOWNLOADS (sqlite3)"
     cd $mount_dir
-    find $user_dir/*/AppData/Local/Google/Chrome/User\ Data/Default -maxdepth 0 -type d |while read d;
+    find $user_dir/*/AppData/Local/Google/Chrome/User\ Data/Default -maxdepth 0 -type d 2>/dev/null|while read d;
     do
       echo $d
       user_name=$(echo "$d"|sed 's/\/AppData.*//'|sed 's/^.*\///')
@@ -979,7 +974,7 @@ function chrome2tln(){
 
       #TODO Run Hindsight on Chrome
       #cd $triage_dir/Browser_Activity
-      #python /usr/local/bin/hindsight.py -i "$mount_dir/$d" -o "$triage_dir/Browser_Activity/$user_name-Hindsight" -l "$triage_dir/Browser_Activity/hindsight.log"
+      #/envs/dfir/bin/python3 /usr/local/bin/hindsight.py -i "$mount_dir/$d" -o "$triage_dir/Browser_Activity/$user_name-Hindsight" -l "$triage_dir/Browser_Activity/hindsight.log"
 
     done
 
@@ -1058,7 +1053,7 @@ function extract_srudb(){
     makegreen "Extract srudb.dat file"
     find /$mount_dir/$winsysdir/[S,s][R,r][U,u] -maxdepth 2 -type f -iname "srudb.dat" 2>/dev/null |while read d;
     do
-      python /opt/app/srum-dump/srum_dump2.py --SRUM_INFILE "$d" --XLSX_OUTFILE $triage_dir/SRUDB.dat/srum_dump-$comp_name.xlsx -r $mount_dir/$winsysdir/$regdir/SOFTWARE -q -t /opt/app/srum-dump/SRUM_TEMPLATE2.xlsx
+      /envs/dfir/bin/python3 /opt/app/srum-dump/srum_dump2.py --SRUM_INFILE "$d" --XLSX_OUTFILE $triage_dir/SRUDB.dat/srum_dump-$comp_name.xlsx -r $mount_dir/$winsysdir/$regdir/SOFTWARE -q -t /opt/app/srum-dump/SRUM_TEMPLATE2.xlsx
     done
 }
 
@@ -1067,7 +1062,7 @@ function parse_current.mdb(){
     makegreen "Parse Current.mdb file"
     find /$mount_dir/$winsysdir/[L,l]*[S,s]/[S,s][U,u][M,m] -type f -iname "Current.mdb"| while read d;
     do
-      python /opt/app/KStrike/KStrike.py "$d" |tee -a $case_dir/Triage/Current.mdb/Kstrike-$comp_name.txt
+      /envs/dfir/bin/python3 /opt/app/KStrike/KStrike.py "$d" |tee -a $case_dir/Triage/Current.mdb/Kstrike-$comp_name.txt
     done
 }
 
@@ -1085,10 +1080,8 @@ function ADS_extract(){
       epoch_time=$(echo $(($crtime/10000000-11644473600)))
       [ $epoch_time ] || epoch_time="0000000000"
       MAC=$(stat --format=%y%x%z "$base_file" 2>/dev/null)
-      [ "$ADS_file" ] && echo "$epoch_time|ADS|$comp_name||[ADS Created]: $ADS_file [MAC]: $MAC"|grep -va "ntfs.streams.list\="|tee -a $case_dir/Triage/AlternateDataStreams-$comp_name.csv
+      [ "$ADS_file" ] && echo "$epoch_time|ADS|$comp_name||[ADS Created]: $ADS_file [MAC]: $MAC"|grep -va "ntfs.streams.list\="|tee -a $tempfile
     done
-      cat $case_dir/Triage/AlternateDataStreams-$comp_name.csv |tee -a $tempfile
-      cat $case_dir/Triage/AlternateDataStreams-$comp_name.csv |grep Zone.Identifier| tee -a $triage_dir/Browser_Activity/Zone.Identifier-$comp_name.csv
 }
 
 #Timeline Prefetch and extract metadata
@@ -1098,8 +1091,8 @@ function prefetch_extract(){
     sleep 1
     find /$mount_dir/$windir/[P,p]refetch -maxdepth 0 -type d |grep -m1 -i fetch$ | while read d;
     do
-      python3 /opt/app/dfir-scripts/python/prefetchruncounts.py "$d" | tee -a $triage_dir/Prefetch/prefetchruncounts-$comp_name.txt
-      python3 /opt/app/dfir-scripts/python/prefetchruncounts.py "$d" -t | tee /tmp/prc.txt
+      /envs/dfir/bin/python3 /opt/app/dfir-scripts/python/prefetchruncounts.py "$d" | tee -a $triage_dir/Prefetch/prefetchruncounts-$comp_name.txt
+      /envs/dfir/bin/python3 /opt/app/dfir-scripts/python/prefetchruncounts.py "$d" -t | tee /tmp/prc.txt
       sleep 1
       [ "/tmp/prc.txt" ] && cat /tmp/prc.txt |while read line;
       do
@@ -1118,7 +1111,7 @@ function winservices(){
     sleep 1
     find $mount_dir/$winsysdir/$regdir -maxdepth 1  -type f 2>/dev/null | grep -m1 -i \/system$| while read d;
     do
-      python3 /opt/app/dfir-scripts/python/winservices.py "$d" |tee -a $triage_dir/Services/winservices.py-$comp_name.csv;
+      /envs/dfir/bin/python3 /opt/app/dfir-scripts/python/winservices.py "$d" |tee -a $triage_dir/Services/winservices.py-$comp_name.csv;
     done
 
     find $triage_dir/Services/ -type f |grep "winservices-" | while read d;
@@ -1141,23 +1134,27 @@ function consolidate_timeline(){
     cat $tempfile | sort -rn |uniq | tee -a | tee -a $triage_dir/Timeline/Triage-Timeline-$comp_name.TLN;
     cat $tempfile |awk -F'|' '{$1=strftime("%Y-%m-%d %H:%M:%S",$1)}{print $1","$2","$3","$4","$5}'|sort -rn | uniq| grep -va ",,,," |tee -a $triage_dir/Timeline/Triage-Timeline-$comp_name.csv
     cat $triage_dir/Timeline/Triage-Timeline-$comp_name.csv|grep -ia ",alert," |tee -a $triage_dir/Alert/RegRipperAlerts-$comp_name.csv
+    cat $triage_dir/Timeline/Triage-Timeline-$comp_name.csv|grep Zone.Identifier| tee -a $triage_dir/Browser_Activity/Zone.Identifier-$comp_name.csv
     makegreen "Complete!"
 }
 
-#copy win logs
-function cp_winlogs(){
+#Get a copy of $MFT, WinEvents, Registry and Logs
+makegreen "Copying Artifacts"
+function cp_artifacts(){
     cd $mount_dir
-    makegreen "Copying setupapi.dev.log"
+    cp $mount_dir/\$MFT $artifact_dir
+    rsync -aRq  "$winsysdir$regdir" "$artifact_dir"
+    rsync -aRq  "$winsysdir$evtxdir" "$artifact_dir"     
     find $windir/[I,i][N,n][F,f] -type f -iname "setupapi*log"|while read d;
     do
       cp "$d" $triage_dir/USB/setupapi.dev.log-$comp_name.txt 2>/dev/null;
     done
     sudo find $windir/Logs -type f 2>/dev/null|grep -vi etl$ |sed 's|^\./||'|sed 's/ /\\ /g'|while read d;
     do 
-      echo "\""$d"\"" && sudo rsync -aRq --include '*log' --exclude '*etl' """$d""" "$triage_dir/Logs";done
+      echo "\""$d"\"" && sudo rsync -aRq --include '*log' --exclude '*etl' """$d""" "$artifact_dir";done
     sudo find $winsysdir/Logs -type f 2>/dev/null|grep -vi etl$ |sed 's|^\./||'|sed 's/ /\\ /g'|while read d; 
     do 
-      echo "\""$d"\"" && sudo rsync -aRq --include '*log' --exclude '*etl'  """$d""" "$triage_dir/Logs";
+      echo "\""$d"\"" && sudo rsync -aRq --include '*log' --exclude '*etl'  """$d""" "$artifact_dir";
     done
 }
 
@@ -1222,7 +1219,7 @@ function parse_index.dat(){
 
 #Run Bits_Parser.py
 function bits_parser(){
-    python3 /usr/local/src/BitsParser/BitsParser.py -i /mnt/image_mount/ProgramData/Microsoft/Network/Downloader/ --carvedb --carveall |tee -a $triage_dir/BITS/bits_parser.py-$comp_name.csv
+  /envs/dfir/bin/python /usr/local/src/BitsParser/BitsParser.py -i /mnt/image_mount/ProgramData/Microsoft/Network/Downloader/ --carvedb --carveall |tee -a $triage_dir/BITS/BitsParser.py-$comp_name.csv
 }
 
 # Extract WindowsEvent Logs
@@ -1233,26 +1230,48 @@ function extract_WinEVTX(){
     #Microsoft-Windows-TaskScheduler4Operational.evtx
     find $mount_dir/$winsysdir/$evtxdir -type f 2>/dev/null | grep -i \/Microsoft-Windows-TaskScheduler\%4Operational.evtx$| while read d;
     do
-      python3 /opt/app/dfir-scripts/WinEventLogs/parse_evtx_tasks.py  "$d" |tee -a $triage_dir/ScheduledTasks/parse_evtx_tasks.py-$comp_name.csv;
+      /envs/dfir/bin/python3 /opt/app/dfir-scripts/WinEventLogs/parse_evtx_tasks.py  "$d" |tee -a $triage_dir/ScheduledTasks/parse_evtx_tasks.py-$comp_name.csv;
     done
-
+    sleep 1
+    cat $triage_dir/ScheduledTasks/parse_evtx_tasks.py-$comp_name.csv |grep -E \,100\,\|\,102\.\|\,106\, |while read d;
+    do
+      timestamp=$(echo $d| awk -F',' '{print $1}'| grep -Eo '^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[1-2][0-9]|3[0-1]) (2[0-3]|[01][0-9]):[0-5][0-9]:[0-5][0-9]')
+      [ "$timestamp" != "" ] && tlntime=$(date -d "$timestamp"  +"%s" 2>/dev/null)
+      evtxinfo=$(echo $d|awk -F"," '{$1=""}1')
+      [ "$timestamp" != "" ] && echo $tlntime"|SchTask|"$comp_name"||"$evtxinfo | tee -a $tempfile
+    done
     #Microsoft-Windows-Bits-Client\%4Operational.evtx
     makegreen "Searching for BITS Transactions"
     find $mount_dir/$winsysdir/$evtxdir -type f 2>/dev/null | grep -i \/Microsoft-Windows-Bits-Client\%4Operational.evtx$| while read d;
     do
-      python3 /opt/app/dfir-scripts/WinEventLogs/parse_evtx_BITS.py "$d" |tee -a $triage_dir/BITS/parse_evtx_BITS.py-$comp_name.csv;
+      /envs/dfir/bin/python3 /opt/app/dfir-scripts/WinEventLogs/parse_evtx_BITS.py "$d" |tee -a $triage_dir/BITS/parse_evtx_BITS.py-$comp_name.csv;
+    done
+    sleep 1
+    cat $triage_dir/BITS/parse_evtx_BITS.py-$comp_name.csv |while read d;
+    do
+      timestamp=$(echo $d| awk -F',' '{print $1}'| grep -Eo '^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[1-2][0-9]|3[0-1]) (2[0-3]|[01][0-9]):[0-5][0-9]:[0-5][0-9]')
+      [ "$timestamp" != "" ] && tlntime=$(date -d "$timestamp"  +"%s" 2>/dev/null)
+      #evtxinfo=$(echo $d|cut -f 2- -d','|sed 's/,/;/g')
+      evtxinfo=$(echo $d|awk -F"," '{$1=""}1')
+      [ "$timestamp" != "" ] && echo $tlntime"|BITS|"$comp_name"||"$evtxinfo | tee -a $tempfile
     done
     #Find RDP Connections
     makegreen "Searching for RDP Sessions"
-    python3 /opt/app/dfir-scripts/WinEventLogs/parse_evtx_RDP.py $mount_dir/$winsysdir/$evtxdir |tee -a $triage_dir/RDP/parse_evtx_RDP.py-$comp_name.csv;
+    /envs/dfir/bin/python3 /opt/app/dfir-scripts/WinEventLogs/parse_evtx_RDP.py $mount_dir/$winsysdir/$evtxdir |tee -a $triage_dir/RDP/parse_evtx_RDP.py-$comp_name.csv;
     /usr/local/src/dfir-scripts/WinEventLogs/RDP_Diagram.sh -f $triage_dir/RDP/parse_evtx_RDP.py-$comp_name.csv -o $triage_dir/RDP/RDP_Diagram.sh-$comp_name.png
-
-    #Check for account changes
-    makegreen "Searching for Account Changes in Windows Event Logs"
-    find $mount_dir/$winsysdir/$evtxdir -type f 2>/dev/null | grep -i \/Security.evtx$| while read d;
-    do
-      python3 /opt/app/dfir-scripts/WinEventLogs/parse_evtx_account_changes.py "$d" |tee -a $triage_dir/WindowsEventLogs/parse_evtx_Account_Changes.py-$comp_name.csv;
+    cat $triage_dir/RDP/parse_evtx_RDP.py-$comp_name.csv|grep -E  \,21\,\|\,23\,\|\,24\,\|\,25\,\|\,1149\,\|\,98\,\|\,131\,\|\,140\,\|\,1102\|\,1105\,\|\,1029 |while read d;
+      do
+        timestamp=$(echo $d| awk -F',' '{print $1}'| grep -Eo '^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[1-2][0-9]|3[0-1]) (2[0-3]|[01][0-9]):[0-5][0-9]:[0-5][0-9]')
+        [ "$timestamp" != "" ] && tlntime=$(date -d "$timestamp"  +"%s" 2>/dev/null)
+        evtxinfo=$(echo $d|awk -F"," '{$1=""}1')
+        [ "$timestamp" != "" ] && echo $tlntime"|RDP|"$comp_name"||"$evtxinfo | tee -a $tempfile
     done
+    #Check for account changes
+    #makegreen "Searching for Account Changes in Windows Event Logs"
+    #find $mount_dir/$winsysdir/$evtxdir -type f 2>/dev/null | grep -i \/Security.evtx$| while read d;
+    #do
+    #  /envs/dfir/bin/python3 /opt/app/dfir-scripts/WinEventLogs/parse_evtx_account_changes.py "$d" |tee -a $triage_dir/WindowsEventLogs/parse_evtx_Account_Changes.py-$comp_name.csv;
+    #done
 }
 
 # Extract WindowsEvent Logs to jsonl
@@ -1338,16 +1357,16 @@ function evtxdump(){
 function zircolite_evtx(){
     zpath="/opt/app/Zircolite"
     find  find $triage_dir/WindowsEventLogs/evtx_dump/ -type f 2>/dev/null | \
-    grep -Ei sysmon\|\/Security\|\/Application\|\/System\|PowerShell\|Defender\|DNS\|Bits\|Smb\|task | \
+    grep -Ei sysmon.evtx.jsonl$\|\/Security.evtx.jsonl$\|\/Application.evtx.jsonl$\|\/System.evtx.jsonl$\|PowerShell\|Defender\|DNS\|Windows-Bits\|Windows-Smb\|TaskScheduler\|firewall| \
     while read d;
     do
       evtx_jsonl=$(echo "$d" |awk -F'dump/' '{print $NF}')
-      python $zpath/zircolite.py -j -e "$d" -r $zpath/rules/rules_windows_generic_full.json -c $zpath/config/fieldMappings.json -o $triage_dir/Alert/Zircolite-"$evtx_jsonl".json -l $triage_dir/Alert/Zircolite-Alert-$comp_name.log
+      /envs/dfir/bin/python3 $zpath/zircolite.py -j -e "$d" -r $zpath/rules/rules_windows_generic_full.json -c $zpath/config/fieldMappings.json --csv -o $triage_dir/Alert/Zircolite-Alerts-$comp_name.csv -l $triage_dir/Alert/Zircolite-log-$comp_name.csv
     done
 }
 
 function scan_for_lolbas(){
-find $triage_dir -type f |grep -Ei jsonl$\|csv$\|txt$ |grep -Ev MFT\|TLN\|Clsid|while read d; do python /usr/local/src/dfir-scripts/WinEventLogs/scanforlolbas.py -p "$d" -l /usr/local/src/lolbas/lolbas.csv |tee -a $triage_dir/lolbas/lolbas-$comp_name.txt;done
+find $triage_dir -type f |grep -Ei jsonl$\|csv$\|txt$ |grep -Ev MFT\|TLN\|Clsid|while read d; do /envs/dfir/bin/python3 /usr/local/src/dfir-scripts/WinEventLogs/scanforlolbas.py -p "$d" -l /usr/local/src/lolbas/lolbas.csv |grep -Ev \|FILE\|Shell32.dll.lnkinfo\|Triage-Timeline |tee -a $triage_dir/lolbas/lolbas-$comp_name.txt;done
 
 }
 
@@ -1356,7 +1375,7 @@ function analyze_mft(){
     cd $mount_dir
     makegreen "Analyzing \$MFT Standby..."
     [ -f "\$MFT" ] && \
-    python /usr/local/bin/analyzeMFT.py -p -f \$MFT --bodyfull --bodyfile=$triage_dir/MFT/analyzeMFT-$comp_name.body
+    /envs/dfir/bin/analyzeMFT.py -p -f \$MFT --bodyfull --bodyfile=$triage_dir/MFT/analyzeMFT-$comp_name.body
     [ -f $triage_dir/MFT/analyzeMFT-$comp_name.body ] && bodyfile.pl -f $triage_dir/MFT/analyzeMFT-$comp_name.body -s $comp_name | \
     sort -rn |tee $triage_dir/Timeline/MFT-$comp_name.TLN.txt && \
     cat $triage_dir/Timeline/MFT-$comp_name.TLN.txt | awk -F'|' '{$1=strftime("%Y-%m-%d %H:%M:%S",$1)}{print $1","$2","$3","$4","$5}'| \
@@ -1370,7 +1389,7 @@ function parse_usn(){
     cd $mount_dir
     makegreen "Extracting \$USNJRNL:$J Standby..."
     [ -f "\$Extend/\$UsnJrnl:\$J" ] && \
-    python2 /usr/local/bin/usn.py -t -s $comp_name -f "\$Extend/\$UsnJrnl:\$J"  -o $triage_dir/USNJRNL/usn.py-$comp_name.TLN.txt
+    /envs/dfir/bin/usn.py -t -s $comp_name -f "\$Extend/\$UsnJrnl:\$J"  -o $triage_dir/USNJRNL/usn.py-$comp_name.TLN.txt
     cat $triage_dir/USNJRNL/usn.py-$comp_name.TLN.txt | awk -F'|' '{$1=strftime("%Y-%m-%d %H:%M:%S",$1)}{print $1","$2","$3","$4","$5}'| \
     tee -a $triage_dir/USNJRNL/usn.py-$comp_name.csv
 }
