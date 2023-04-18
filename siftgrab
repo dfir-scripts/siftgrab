@@ -1361,7 +1361,7 @@ function zircolite_evtx(){
     while read d;
     do
       evtx_jsonl=$(echo "$d" |awk -F'dump/' '{print $NF}')
-      /envs/dfir/bin/python3 $zpath/zircolite.py -j -e "$d" -r $zpath/rules/rules_windows_generic_full.json -c $zpath/config/fieldMappings.json --csv -o $triage_dir/Alert/Zircolite-Alerts-$comp_name.csv -l $triage_dir/Alert/Zircolite-log-$comp_name.csv
+      /envs/dfir/bin/python3 $zpath/zircolite.py -j -e "$d" -r $zpath/rules/rules_windows_generic_full.json -c $zpath/config/fieldMappings.json --csv -o $triage_dir/Alert/Zircolite-"$evtx_jsonl".json -l $triage_dir/Alert/Zircolite-log-$comp_name.csv
     done
 }
 
