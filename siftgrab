@@ -971,13 +971,7 @@ function chrome2tln(){
       awk -F'|' '{print int($1/1000000-11644473600)"|"$2"|"$3}'| \
       awk -F'|' '{$1=strftime("%Y-%m-%d %H:%M:%S",$1)}{print $1",Chrome,,,[Bookmark Created] NAME:"$2" URL:"$3}' |\
       sed "s/,,,/,${comp_name},${user_name},/" | tee -a "$triage_dir/Browser_Activity/$user_name-Chrome-Bookmarks-$comp_name.csv"
-
-      #TODO Run Hindsight on Chrome
-      #cd $triage_dir/Browser_Activity
-      #/envs/dfir/bin/python3 /usr/local/bin/hindsight.py -i "$mount_dir/$d" -o "$triage_dir/Browser_Activity/$user_name-Hindsight" -l "$triage_dir/Browser_Activity/hindsight.log"
-
-    done
-
+   done
     # Copy Files to Timeline Temp File
     find $triage_dir/Browser_Activity/ -type f |grep Chrome |while read d;
     do
@@ -991,6 +985,9 @@ function chrome2tln(){
         read -n1 -r -p "Press any key to continue..." key
       done
     done
+   Run Hindsight on Chrome
+   cd $mount_dir
+   /envs/dfir/bin/python3 /usr/local/src/Hindsight/hindsight.py   -i "$user_dir" -o "$triage_dir/Browser_Activity/Hindsight-$comp_name" -l "$triage_dir/Browser_Activity/hindsight.log" --temp_dir /tmp
 }
 
 #Timeline Firefox metadata
@@ -1149,7 +1146,7 @@ function cp_artifacts(){
     do
       cp "$d" $triage_dir/USB/setupapi.dev.log-$comp_name.txt 2>/dev/null;
     done
-    sudo find $windir/Logs -type f 2>/dev/null|grep -vi etl$ |sed 's|^\./||'|sed 's/ /\\ /g'|while read d;
+    sudo find $windir/Logs -type f 2>/dev/null|grep -Evi \.etl$\|\.cab$ |sed 's|^\./||'|sed 's/ /\\ /g'|while read d;
     do 
       echo "\""$d"\"" && sudo rsync -aRq --include '*log' --exclude '*etl' """$d""" "$artifact_dir";done
     sudo find $winsysdir/Logs -type f 2>/dev/null|grep -vi etl$ |sed 's|^\./||'|sed 's/ /\\ /g'|while read d; 
