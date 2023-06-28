@@ -40,16 +40,13 @@ esedbexport,prefetchruncounts.py,lnkinfo,evtx_dump,PyWMIPersistenceFinder.py,CCM
 jobparser.py,bits_parser.py,Hindsight, Unfurl,Kacos2000/Queries,INDXParse.py,Volatility3,KStrike.py
 
 <li>File Analysis Tools
-Didier Stevens Tools,Floss,DEXRAY,iocextract,stegosuite,oletools,pefile,Density Scout
+Didier Stevens Tools,Floss,DEXRAY,iocextract,oletools,pefile,Density Scout
 
 <li>Python Modules (installs python2, python3)
 python-registry,python3-libesedb,python-evtx,libscca-python,liblnk-python,libfwsi-python
 
 <li>Misc:
 gift/stable repository,clamav,lf,attr,libesedb-utils,liblnk-utils,libevtx-utils,pff-tools,jq,yara,rar,unrar,p7zip-full,p7zip-rar
-
-<li>Gui Tools: 
-CyberChef,Bless,SqliteBrowser,R-Linux, LogFileParser,Bulk Extractor(Unconfigured),clamtk, gparted, feh, eog, glogg, binwalk, clamtk, guymager, graphviz
 
 <li>Yara Rules (fetch using get-yara-rules.sh)
 Nextron, ReversingLabs, yararules.com
