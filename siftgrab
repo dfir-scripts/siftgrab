@@ -318,8 +318,8 @@ while [ opt != '' ]
            set_dsource_path
            check_dsource_path
            /opt/app/dfir-scripts/shellscripts/regripperall.sh $mount_dir
-           secrets_dump
-           timeline_registry
+           #secrets_dump
+           #timeline_registry
            read -n1 -r -p "Press any key to continue..." key
            clear;
            show_menu;
