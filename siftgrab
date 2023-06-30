@@ -211,9 +211,9 @@ function show_menu(){
     echo -e "${GRAY} Mount and Extract Information From Windows Disk Images${NORMAL}"
     echo -e "********************************************************"
     echo -e "**  1) ${GREEN} Mount a Disk or Disk Image (E01, Raw, AFF, QCOW VMDK, VHDX)${NORMAL}"
-    echo -e "**  2)${GREEN}  Process Windows Artifacts from Mounted Image or Offline Directory${NORMAL}"
-    echo -e "**  3)${GREEN}  Extract and Analyze Windows Event Logs${NORMAL}"
-    echo -e "**  4) ${GREEN} Run Regiripper on a Mounted Volume or Offline Directory${NORMAL}"
+    echo -e "**  2)${GREEN}  Run a Comprehensive Analysis of Windows Artifacts on a Mounted Image or Directory${NORMAL}"
+    echo -e "**  3)${GREEN}  Analyze Windows Event Logs (evtx_dump, Zircolite and custom scripts)${NORMAL}"
+    echo -e "**  4) ${GREEN} Run Registry Analysis tools (Regripper, Yarp + RegistryFlush, Secretsdump, timeline.py)${NORMAL}"
     echo -e "**  5) ${GREEN} Acquire a Copy of Windows Forensic Artifacts from Mounted Image(s)${NORMAL}"
     echo -e "**  6) ${GREEN} Browse Files (lf)${NORMAL}"
     echo -e "**  7) ${GREEN} Read me${NORMAL}"
@@ -257,6 +257,7 @@ while [ opt != '' ]
            regrip_sam
            regrip_amcache.hve
            secrets_dump
+           timeline_registry
            prefetch_extract
            extract_objects_data
            extract_Jobs
@@ -294,7 +295,7 @@ while [ opt != '' ]
             ;;
         #Menu Selection: Extract Windows Event Log to jsonl
         3) clear;
-           makegreen "Extract Windows Event Logs to jsonl"
+           makegreen "Analyze Windows Event Logs (evtx_dump, Zircolite and custom scripts)"
            makegreen "Default Source Directory: Windows/System32/winevt/Logs"
            set_msource_path
            set_windir
@@ -310,7 +311,7 @@ while [ opt != '' ]
             ;;
         #Menu Selection: Run Regripper on a mounted volume or data source
         4) clear;
-           makegreen "Run Regripper on a mounted volume or offline data dir"
+           makegreen "Run Registry Analysis tools (Regripper, Yarp + RegistryFlush, Secretsdump, timeline.py)"
            set_msource_path
            set_windir
            get_computer_name
@@ -318,6 +319,7 @@ while [ opt != '' ]
            check_dsource_path
            /opt/app/dfir-scripts/shellscripts/regripperall.sh $mount_dir
            secrets_dump
+           timeline_registry
            read -n1 -r -p "Press any key to continue..." key
            clear;
            show_menu;
@@ -398,6 +400,12 @@ function set_windir(){
       user_dir=$(find $mount_dir -maxdepth 1 -type d 2>/dev/null|grep -m1 -io users$)
       regdir=$(find $mount_dir/$winsysdir -maxdepth 1 -type d 2>/dev/null|egrep -m1 -io \/config$)
       evtxdir=$(find $mount_dir/$winsysdir -maxdepth 2 -type d 2>/dev/null|egrep -m1 -io \/winevt\/Logs$)
+      sam_hive=$(find $mount_dir/$winsysdir/$regdir -maxdepth 1 -type f 2>/dev/null | grep -i -m1 "\/sam$")
+      system_hive=$(find $mount_dir/$winsysdir/$regdir -maxdepth 1 -type f 2>/dev/null | grep -i -m1 "\/system$")
+      security_hive=$(find $mount_dir/$winsysdir/$regdir -maxdepth 1 -type f 2>/dev/null | grep -i -m1 "\/security$")
+      software_hive=$(find $mount_dir/$winsysdir/$regdir -maxdepth 1 -type f 2>/dev/null | grep -i -m1 "\/software$")
+      amcache_hive=$(find $mount_dir/$windir/[a,A]*/[P,p]* -maxdepth 1 -type f |egrep -m1 -i \/amcache.hve$)
+      registry_hives=("$sam_hive" "$system_hive" "$security_hive" "$software_hive" "$amcache_hive")
       [ "$windir" == "" ] || [ "$winsysdir" == "" ] && files_only="yes"
       [ "$opt" == "2" ] || [ "$opt" == "5" ] || [ "$opt" == "6" ] && [ "$files_only" == "yes" ] && \
       makered "No Windows Directory Path Found on Source..." && sleep 2 && show_menu
@@ -409,9 +417,7 @@ function set_windir(){
 #Get Computer Name using Regripper's "comp_name" plugin
 function get_computer_name(){
    [ "$comp_name" == "" ] &&  \
-   comp_name=$(find $mount_dir/$winsysdir/$regdir -maxdepth 1 -type f  |egrep -m1 -i /system$| while read d;
-     do
-       rip.pl -r "$d" -p compname 2>/dev/null |grep -i "computername   "|awk -F'= ' '{ print $2 }';done)
+   comp_name=$(rip.pl -r "$system_hive" -p compname 2>/dev/null |grep -i "computername   "|awk -F'= ' '{ print $2 }')
    [ "$comp_name" == "" ] && comp_name=$(date +'%Y-%m-%d-%H%M')
    echo "ComputerName:" $comp_name
    #cleanup and create a new new temp file to hold regripper output
@@ -707,33 +713,30 @@ function regrip_software(){
     cd $case_dir
     makegreen "Running select RegRipper plugins on the Software Registry Hive(s)"
     sleep 1
-    find $mount_dir/$winsysdir/$regdir -maxdepth 1 -type f 2>/dev/null | grep -i "\/software$"| while read d;
-    do
-      rip.pl -r "$d" -p winver |tee -a $triage_dir/Registry/Regripper/System_Info/Windows_Version_Info-$comp_name.txt;
-      rip.pl -r "$d" -p lastloggedon |tee -a $triage_dir/Registry/Regripper/Account_Info/Last-Logged-On-$comp_name.txt;
-      rip.pl -r "$d" -p networklist 2>/dev/null |tee -a $triage_dir/Registry/Regripper/System_Info/Network/Network-List-$comp_name.txt;
-      rip.pl -r $d -p profilelist 2>/dev/null |tee -a $triage_dir/Registry/Regripper/Account_Info/User-Profiles-$comp_name.txt;
-      rip.pl -r $d -p pslogging 2>/dev/null |tee -a $triage_dir/Registry/Regripper/Settings/Powershell-logging-$comp_name.txt;
-      rip.pl -r $d -p clsid 2>/dev/null |tee -a $triage_dir/Registry/Regripper/Settings/Clsid-logging-$comp_name.txt;
-      rip.pl -r "$d" -p portdev |tee -a $triage_dir/USB/USB_Device_List-$comp_name.txt;
-      rip.pl -r "$d" -p runonceex |grep -va "^$"|tee -a $triage_dir/Registry/Regripper/Run_Keys/Run-Once-$comp_name.txt;
-      rip.pl -r "$d" -p appcertdlls |grep -va "^$"|tee -a $triage_dir/Registry/Regripper/Settings/Appcertsdlls-$comp_name.txt;
-      rip.pl -r "$d" -p appinitdlls |grep -va "^$"|tee -a $triage_dir/Registry/Regripper/Settings/AppInitdlls-$comp_name.txt;
-      rip.pl -r "$d" -p dcom |grep -va "^$"|tee -a $triage_dir/Registry/Regripper/Settings/ports-$comp_name.txt;
-      rip.pl -r "$d" -p psscript |grep -va "^$"|tee -a $triage_dir/Registry/Regripper/Settings/Powershell-Script-$comp_name.txt;
-      rip.pl -r "$d" -p listsoft |grep -va "^$"|tee -a $triage_dir/Registry/Regripper/System_Info/Software/Software-Installed-$comp_name.txt;
-      rip.pl -r "$d" -p msis |grep -va "^$"|tee -a $triage_dir/Registry/Regripper/System_Info/Software/Msiexec-Installs-$comp_name.txt;
-      rip.pl -r "$d" -p uninstall |grep -va "^$"|tee -a $triage_dir/Registry/Regripper/System_Info/Software/Add-Remove-Programs-$comp_name.txt;
-      rip.pl -r "$d" -p netsh |grep -va "^$"|tee -a $triage_dir/Registry/Regripper/Settings/Netsh-$comp_name.txt;
-      rip.pl -r "$d" -p srum |grep -va "^$"|tee -a $triage_dir/SRUDB.dat/Regripper-srum-$comp_name.txt;
-      rip.pl -r "$d" -p run |grep -va "^$"|tee -a $triage_dir/Registry/Regripper/Run_Keys/Autorun-SOFTWARE-$comp_name.txt;
-      rip.pl -r "$d" -p defender |tee -a $triage_dir/Registry/Regripper/Settings/Defender-$comp_name.txt;
-      rip.pl -r "$d" -p disablemru |tee -a $triage_dir/Registry/Regripper/Settings/DisableMRU-$comp_name.txt;
-      rip.pl -r "$d" -f software | tee -a $triage_dir/Registry/Regripper/SOFTWARE-$comp_name.txt;
-      rip.pl -aT -r "$d" |sed "s/|||/|${comp_name}|${user_name}|/" >> $tempfile
-      rip.pl -r "$d" -p tasks |tee -a $triage_dir/ScheduledTasks/Regripper-Tasks-$comp_name.txt
-      rip.pl -r "$d" -p taskcache |tee -a $triage_dir/ScheduledTasks/Regripper-TaskCache-$comp_name.txt
-    done
+    rip.pl -r $software_hive -p winver |tee -a $triage_dir/Registry/Regripper/System_Info/Windows_Version_Info-$comp_name.txt;
+    rip.pl -r $software_hive -p lastloggedon |tee -a $triage_dir/Registry/Regripper/Account_Info/Last-Logged-On-$comp_name.txt;
+    rip.pl -r $software_hive -p networklist 2>/dev/null |tee -a $triage_dir/Registry/Regripper/System_Info/Network/Network-List-$comp_name.txt;
+    rip.pl -r $software_hive -p profilelist 2>/dev/null |tee -a $triage_dir/Registry/Regripper/Account_Info/User-Profiles-$comp_name.txt;
+    rip.pl -r $software_hive -p pslogging 2>/dev/null |tee -a $triage_dir/Registry/Regripper/Settings/Powershell-logging-$comp_name.txt;
+    rip.pl -r $software_hive -p clsid 2>/dev/null |tee -a $triage_dir/Registry/Regripper/Settings/Clsid-logging-$comp_name.txt;
+    rip.pl -r $software_hive -p portdev |tee -a $triage_dir/USB/USB_Device_List-$comp_name.txt;
+    rip.pl -r $software_hive -p runonceex |grep -va "^$"|tee -a $triage_dir/Registry/Regripper/Run_Keys/Run-Once-$comp_name.txt;
+    rip.pl -r $software_hive -p appcertdlls |grep -va "^$"|tee -a $triage_dir/Registry/Regripper/Settings/Appcertsdlls-$comp_name.txt;
+    rip.pl -r $software_hive -p appinitdlls |grep -va "^$"|tee -a $triage_dir/Registry/Regripper/Settings/AppInitdlls-$comp_name.txt;
+    rip.pl -r $software_hive -p dcom |grep -va "^$"|tee -a $triage_dir/Registry/Regripper/Settings/ports-$comp_name.txt;
+    rip.pl -r $software_hive -p psscript |grep -va "^$"|tee -a $triage_dir/Registry/Regripper/Settings/Powershell-Script-$comp_name.txt;
+    rip.pl -r $software_hive -p listsoft |grep -va "^$"|tee -a $triage_dir/Registry/Regripper/System_Info/Software/Software-Installed-$comp_name.txt;
+    rip.pl -r $software_hive -p msis |grep -va "^$"|tee -a $triage_dir/Registry/Regripper/System_Info/Software/Msiexec-Installs-$comp_name.txt;
+    rip.pl -r $software_hive -p uninstall |grep -va "^$"|tee -a $triage_dir/Registry/Regripper/System_Info/Software/Add-Remove-Programs-$comp_name.txt;
+    rip.pl -r $software_hive -p netsh |grep -va "^$"|tee -a $triage_dir/Registry/Regripper/Settings/Netsh-$comp_name.txt;
+    rip.pl -r $software_hive -p srum |grep -va "^$"|tee -a $triage_dir/SRUDB.dat/Regripper-srum-$comp_name.txt;
+    rip.pl -r $software_hive -p run |grep -va "^$"|tee -a $triage_dir/Registry/Regripper/Run_Keys/Autorun-SOFTWARE-$comp_name.txt;
+    rip.pl -r $software_hive -p defender |tee -a $triage_dir/Registry/Regripper/Settings/Defender-$comp_name.txt;
+    rip.pl -r $software_hive -p disablemru |tee -a $triage_dir/Registry/Regripper/Settings/DisableMRU-$comp_name.txt;
+    rip.pl -r $software_hive -f software | tee -a $triage_dir/Registry/Regripper/SOFTWARE-$comp_name.txt;
+    rip.pl -aT -r $software_hive |sed "s/|||/|${comp_name}|${user_name}|/" >> $tempfile
+    rip.pl -r $software_hive -p tasks |tee -a $triage_dir/ScheduledTasks/Regripper-Tasks-$comp_name.txt
+    rip.pl -r $software_hive -p taskcache |tee -a $triage_dir/ScheduledTasks/Regripper-TaskCache-$comp_name.txt
 }
 
 #Run select RegRipper plugins on the System Registry
@@ -741,25 +744,22 @@ function rip_system(){
     cd $case_dir
     makegreen "Running select RegRipper plugins on the System Registry Hive(s)"
     sleep 1
-    find $mount_dir/$winsysdir/$regdir -maxdepth 1 -type f 2>/dev/null | grep -i -m1 "\/system$"| while read d;
-    do
-      rip.pl -r $d -p compname 2>/dev/null |tee -a $triage_dir/Registry/Regripper/System_Info/Computer-Name-$comp_name.txt;
-      rip.pl -r $d -p nic2 2>/dev/null |tee -a $triage_dir/Registry/Regripper/System_Info/Network/Last-Networks-$comp_name.txt;
-      rip.pl -r "$d" -p shares 2>/dev/null|tee -a $triage_dir/Registry/Regripper/System_Info/Network/Network-Shares-$comp_name.txt;
-      rip.pl -r "$d" -p shimcache |tee -a $triage_dir/Registry/Regripper/Program_Execution/Shimcache-$comp_name.txt;
-      rip.pl -r "$d" -p usbstor |tee -a $triage_dir/USB/USBStor-$comp_name.txt;
-      rip.pl -r "$d" -p usbdevices |tee -a $triage_dir/USB//USBStor-$comp_name.txt;
-      rip.pl -r "$d" -p backuprestore |tee -a $triage_dir/Registry/Regripper/Settings/Not-In-VSS-$comp_name.txt;
-      rip.pl -r "$d" -p ntds |tee -a $triage_dir/Registry/Regripper/Settings/ntds-$comp_name.txt;
-      rip.pl -r "$d" -p devclass |tee -a $triage_dir/USB//USBdesc-$comp_name.txt;
-      rip.pl -r "$d" -p lsa |tee -a $triage_dir/Registry/Regripper/Settings/Lsa-$comp_name.txt;
-      rip.pl -r "$d" -p disableremotescm |tee -a $triage_dir/Registry/Regripper/Settings/disableremote-sc.exe-$comp_name.txt;
-      rip.pl -r "$d" -p rdpport |tee -a $triage_dir/Registry/Regripper/Settings/RDP-Port-$comp_name.txt;
-      rip.pl -r "$d" -p remoteaccess |tee -a $triage_dir/Registry/Regripper/Settings/Remote-Access-Lockout-$comp_name.txt;
-      rip.pl -r "$d" -p routes |tee -a $triage_dir/Registry/Regripper/System_Info/Network/Routes-$comp_name.txt;
-      rip.pl -aT -r $d |sed "s/|||/|${comp_name}|${user_name}|/" >> $tempfile
-      rip.pl -r "$d" -f system |tee -a $triage_dir/Registry/Regripper/SYSTEM-$comp_name.txt;
-    done
+    rip.pl -r $system_hive -p compname 2>/dev/null |tee -a $triage_dir/Registry/Regripper/System_Info/Computer-Name-$comp_name.txt;
+    rip.pl -r $system_hive -p nic2 2>/dev/null |tee -a $triage_dir/Registry/Regripper/System_Info/Network/Last-Networks-$comp_name.txt;
+    rip.pl -r $system_hive -p shares 2>/dev/null|tee -a $triage_dir/Registry/Regripper/System_Info/Network/Network-Shares-$comp_name.txt;
+    rip.pl -r $system_hive -p shimcache |tee -a $triage_dir/Registry/Regripper/Program_Execution/Shimcache-$comp_name.txt;
+    rip.pl -r $system_hive -p usbstor |tee -a $triage_dir/USB/USBStor-$comp_name.txt;
+    rip.pl -r $system_hive -p usbdevices |tee -a $triage_dir/USB//USBStor-$comp_name.txt;
+    rip.pl -r $system_hive -p backuprestore |tee -a $triage_dir/Registry/Regripper/Settings/Not-In-VSS-$comp_name.txt;
+    rip.pl -r $system_hive -p ntds |tee -a $triage_dir/Registry/Regripper/Settings/ntds-$comp_name.txt;
+    rip.pl -r $system_hive -p devclass |tee -a $triage_dir/USB//USBdesc-$comp_name.txt;
+    rip.pl -r $system_hive -p lsa |tee -a $triage_dir/Registry/Regripper/Settings/Lsa-$comp_name.txt;
+    rip.pl -r $system_hive -p disableremotescm |tee -a $triage_dir/Registry/Regripper/Settings/disableremote-sc.exe-$comp_name.txt;
+    rip.pl -r $system_hive -p rdpport |tee -a $triage_dir/Registry/Regripper/Settings/RDP-Port-$comp_name.txt;
+    rip.pl -r $system_hive -p remoteaccess |tee -a $triage_dir/Registry/Regripper/Settings/Remote-Access-Lockout-$comp_name.txt;
+    rip.pl -r $system_hive -p routes |tee -a $triage_dir/Registry/Regripper/System_Info/Network/Routes-$comp_name.txt;
+    rip.pl -aT -r $d |sed "s/|||/|${comp_name}|${user_name}|/" >> $tempfile
+    rip.pl -r $system_hive -f system |tee -a $triage_dir/Registry/Regripper/SYSTEM-$comp_name.txt;
 }
 
 #Run select RegRipper plugins on the Security Registry
@@ -767,12 +767,9 @@ function rip_security(){
     cd $case_dir
     makegreen "Running select RegRipper plugins on the Security Registry Hive(s)"
     sleep 1
-    find $mount_dir/$winsysdir/$regdir -maxdepth 1 -type f 2>/dev/null | grep -m1 -i "\/security$"| while read d;
-    do
-      rip.pl -a -r "$d" |tee -a $triage_dir/Registry/Regripper/Settings/Audit-Policy-$comp_name.txt;
-      rip.pl -aT -r $d |sed "s/|||/|${comp_name}|${user_name}|/" >> $tempfile
-      rip.pl -r "$d" -f security | tee -a $triage_dir/Registry/Regripper/SECURITY-$comp_name.txt;
-    done
+    rip.pl -a -r $security_hive |tee -a $triage_dir/Registry/Regripper/Settings/Audit-Policy-$comp_name.txt;
+    rip.pl -aT -r $security_hive |sed "s/|||/|${comp_name}|${user_name}|/" >> $tempfile
+    rip.pl -r $security_hive -f security | tee -a $triage_dir/Registry/Regripper/SECURITY-$comp_name.txt;
 }
 
 #Run all RegRipper plugins on NTUSER.DAT and Usrclass.dat
@@ -867,23 +864,40 @@ function regrip_sam(){
 #Run RegRipper on AmCache.hve
 function regrip_amcache.hve(){
     makegreen "Extracting Any RecentFileCache/AmCache (Regripper)"
-    amcache_file=$(find $mount_dir/$windir/[a,A]*/[P,p]* -maxdepth 1 -type f |egrep -m1 -i \/amcache.hve$)
+    
 
-    [ "$amcache_file" ] && \
+    [ "$amcache_hive" ] && \
     rip.pl -d -r "$d" |grep "Hive is not dirty" && \
     echo AMCACHE Hive is Clean |tee -a $triage_dir/Registry/yarp-registryflush.py/Hive-State-$comp_name.txt||\
     echo AMCACHE Hive is Dirty |tee -a $triage_dir/Registry/yarp-registryflush.py/Hive-State-$comp_name.txt;
-    rip.pl -aT -r "$amcache_file" |sed "s/|||/|${comp_name}|${user_name}|/"| tee -a $tempfile
-    rip.pl -r "$amcache_file" -p amcache |tee -a "$triage_dir/Registry/Regripper/Program_Execution/Amcache-$comp_name.txt"
+    rip.pl -aT -r "$amcache_hive" |sed "s/|||/|${comp_name}|${user_name}|/"| tee -a $tempfile
+    rip.pl -r "$amcache_hive" -p amcache |tee -a "$triage_dir/Registry/Regripper/Program_Execution/Amcache-$comp_name.txt"
 }
 
 # Dump offline hashes and LSA secrets
 function secrets_dump(){
-sam_hive=$(find $mount_dir/$winsysdir/$regdir -maxdepth 1 -type f 2>/dev/null | grep -i -m1 "\/sam$")
-system_hive=$(find $mount_dir/$winsysdir/$regdir -maxdepth 1 -type f 2>/dev/null | grep -i -m1 "\/system$")
-security_hive=$(find $mount_dir/$winsysdir/$regdir -maxdepth 1 -type f 2>/dev/null | grep -i -m1 "\/security$")
-/envs/dfir/bin/python /usr/share/doc/python3-impacket/examples/secretsdump.py -sam $sam_hive -system $system_hive -security $security_hive local | tee $triage_dir/Registry/Impacket/secrets_dump-$comp_name.txt
+  makegreen "Dumping Hashes and LSA Secrets (secrets_dump.py)"
+  /envs/dfir/bin/python /usr/share/doc/python3-impacket/examples/secretsdump.py -sam $sam_hive -system $system_hive -security $security_hive local | tee $triage_dir/Registry/Impacket/secrets_dump-$comp_name.txt
 }
+
+# Timeline registry
+function timeline_registry(){
+  makegreen "Timelining Registry (timeline.py)"
+  for hive in "${registry_hives[@]}";
+  do
+    /envs/dfir/bin/python /usr/local/src/Python-Registry/samples/timeline.py $hive |sed 's/^\(.\{19\}\).\{8\}/\1,/'| \
+    awk -F',' '{print $1",REG,,,"$2}'|sed "s/,,,/,${comp_name},${user_name},/" | tee -a $triage_dir/Timeline/Registry-timeline.py-$comp_name.txt 
+  done
+  cd $mount_dir/$user_dir/
+  find "/$mount_dir/$user_dir/" -maxdepth 2 ! -type l|grep -i ntuser.dat$ |while read ntuser_path;
+    do
+      user_name=$( echo "$ntuser_path"|sed 's/\/$//'|awk -F"/" '{print $(NF-1)}')
+      /envs/dfir/bin/python /usr/local/src/Python-Registry/samples/timeline.py $ntuser_path |sed 's/^\(.\{19\}\).\{8\}/\1,/'| \
+      awk -F',' '{print $1",REG,,,"$2}'|sed "s/,,,/,${comp_name},${user_name},/" | tee -a $triage_dir/Timeline/Registry-timeline.py-$comp_name.txt 
+    done
+}
+
+/usr/local/src/Python-Registry/samples/timeline.py
 
 function del_no_result(){
   cd $case_dir
@@ -1117,10 +1131,7 @@ function winservices(){
     cd $mount_dir
     makegreen "Searching for windows Services (winservices.py)"
     sleep 1
-    find $mount_dir/$winsysdir/$regdir -maxdepth 1  -type f 2>/dev/null | grep -m1 -i \/system$| while read d;
-    do
-      /envs/dfir/bin/python3 /opt/app/dfir-scripts/python/winservices.py "$d" |tee -a $triage_dir/Services/winservices.py-$comp_name.csv;
-    done
+    /envs/dfir/bin/python3 /opt/app/dfir-scripts/python/winservices.py $system_hive |tee -a $triage_dir/Services/winservices.py-$comp_name.csv;
 
     find $triage_dir/Services/ -type f |grep "winservices-" | while read d;
     do
@@ -1274,12 +1285,6 @@ function extract_WinEVTX(){
         evtxinfo=$(echo $d|awk -F"," '{$1=""}1')
         [ "$timestamp" != "" ] && echo $tlntime"|RDP|"$comp_name"||"$evtxinfo >> $tempfile
     done
-    #Check for account changes
-    #makegreen "Searching for Account Changes in Windows Event Logs"
-    #find $mount_dir/$winsysdir/$evtxdir -type f 2>/dev/null | grep -i \/Security.evtx$| while read d;
-    #do
-    #  /envs/dfir/bin/python3 /opt/app/dfir-scripts/WinEventLogs/parse_evtx_account_changes.py "$d" |tee -a $triage_dir/WindowsEventLogs/parse_evtx_Account_Changes.py-$comp_name.csv;
-    #done
 }
 
 # Extract WindowsEvent Logs to jsonl
