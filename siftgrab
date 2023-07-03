@@ -300,7 +300,7 @@ while [ opt != '' ]
            set_msource_path
            set_windir
            set_dsource_path
-           triage_dir=$case_dir
+           #timeline_dir="$/Timeline"
            get_evtxsize
            makered "Exporting Windows Event Logs to jsonl"
            extract_WinEVTX
@@ -316,10 +316,11 @@ while [ opt != '' ]
            set_windir
            get_computer_name
            set_dsource_path
-           check_dsource_path
+           check_dsource_path		   
            /opt/app/dfir-scripts/shellscripts/regripperall.sh $mount_dir
-           #secrets_dump
-           #timeline_registry
+           /envs/dfir/bin/python /usr/share/doc/python3-impacket/examples/secretsdump.py -sam $sam_hive -system $system_hive -security $security_hive local |tee -a $case_dir/Secretsdump.txt
+           timeline_dir=$case_dir/Timeline
+		   timeline_registry
            read -n1 -r -p "Press any key to continue..." key
            clear;
            show_menu;
@@ -382,6 +383,7 @@ function set_dsource_path(){
       [ ! -d "${case_dir}" ] && makered "Path does not exist.." && sleep 1 && show_menu
       case_dir="$case_dir/$comp_name"
       triage_dir="$case_dir/Triage"
+      timeline_dir="$triage_dir/Timeline"
       artifact_dir="$case_dir/Artifact"
 }
 function check_dsource_path(){
@@ -882,22 +884,21 @@ function secrets_dump(){
 
 # Timeline registry
 function timeline_registry(){
+  [ "$opt" == "4" ] || Timeline="Timeline"
   makegreen "Timelining Registry (timeline.py)"
   for hive in "${registry_hives[@]}";
   do
     /envs/dfir/bin/python /usr/local/src/Python-Registry/samples/timeline.py $hive |sed 's/^\(.\{19\}\).\{8\}/\1,/'| \
-    awk -F',' '{print $1",REG,,,"$2}'|sed "s/,,,/,${comp_name},${user_name},/" | tee -a $triage_dir/Timeline/Registry-timeline.py-$comp_name.txt 
+    awk -F',' '{print $1",REG,,,"$2}'|sed "s/,,,/,${comp_name},${user_name},/" | tee -a $timeline_dir/Registry-timeline.py-$comp_name.txt 
   done
   cd $mount_dir/$user_dir/
   find "/$mount_dir/$user_dir/" -maxdepth 2 ! -type l|grep -i ntuser.dat$ |while read ntuser_path;
     do
       user_name=$( echo "$ntuser_path"|sed 's/\/$//'|awk -F"/" '{print $(NF-1)}')
       /envs/dfir/bin/python /usr/local/src/Python-Registry/samples/timeline.py $ntuser_path |sed 's/^\(.\{19\}\).\{8\}/\1,/'| \
-      awk -F',' '{print $1",REG,,,"$2}'|sed "s/,,,/,${comp_name},${user_name},/" | tee -a $triage_dir/Timeline/Registry-timeline.py-$comp_name.txt 
+      awk -F',' '{print $1",REG,,,"$2}'|sed "s/,,,/,${comp_name},${user_name},/" | tee -a $timeline_dir/Registry-timeline.py-$comp_name.txt 
     done
 }
-
-/usr/local/src/Python-Registry/samples/timeline.py
 
 function del_no_result(){
   cd $case_dir
@@ -1009,7 +1010,8 @@ function chrome2tln(){
         read -n1 -r -p "Press any key to continue..." key
       done
     done
-   Run Hindsight on Chrome
+   # Run Hindsight on Users Directory
+   makegreen "Running Hindsight on $user_dir"
    mkdir -p $triage_dir/Browser_Activity/tmp
    cd $mount_dir
    /envs/dfir/bin/python3 /usr/local/src/Hindsight/hindsight.py   -i "$user_dir" -o "$triage_dir/Browser_Activity/Hindsight-$comp_name" -l "$triage_dir/Browser_Activity/hindsight.log" --temp_dir $triage_dir/Browser_Activity/tmp
@@ -1150,10 +1152,10 @@ function winservices(){
 function consolidate_timeline(){
     makegreen "Consolidating TLN Files"
     echo ""
-    cat $tempfile | sort -rn |uniq | tee -a | tee -a $triage_dir/Timeline/Triage-Timeline-$comp_name.TLN;
-    cat $tempfile |awk -F'|' '{$1=strftime("%Y-%m-%d %H:%M:%S",$1)}{print $1","$2","$3","$4","$5}'|sort -rn | uniq| grep -va ",,,," |tee -a $triage_dir/Timeline/Triage-Timeline-$comp_name.csv
-    cat $triage_dir/Timeline/Triage-Timeline-$comp_name.csv|grep -ia ",alert," |tee -a $triage_dir/Alert/RegRipperAlerts-$comp_name.csv
-    cat $triage_dir/Timeline/Triage-Timeline-$comp_name.csv|grep Zone.Identifier| tee -a $triage_dir/Browser_Activity/Zone.Identifier-$comp_name.csv
+    cat $tempfile | sort -rn |uniq | tee -a | tee -a $timeline_dir/Triage-Timeline-$comp_name.TLN;
+    cat $tempfile |awk -F'|' '{$1=strftime("%Y-%m-%d %H:%M:%S",$1)}{print $1","$2","$3","$4","$5}'|sort -rn | uniq| grep -va ",,,," |tee -a $timeline_dir/Triage-Timeline-$comp_name.csv
+    cat $timeline_dir/Triage-Timeline-$comp_name.csv|grep -ia ",alert," |tee -a $triage_dir/Alert/RegRipperAlerts-$comp_name.csv
+    cat $timeline_dir/Triage-Timeline-$comp_name.csv|grep Zone.Identifier| tee -a $triage_dir/Browser_Activity/Zone.Identifier-$comp_name.csv
     makegreen "Complete!"
 }
 
@@ -1379,7 +1381,10 @@ function zircolite_evtx(){
 }
 
 function scan_for_lolbas(){
-find $triage_dir -type f |grep -Ei jsonl$\|csv$\|txt$ |grep -Ev MFT\|TLN\|Clsid|while read d; do /envs/dfir/bin/python3 /usr/local/src/dfir-scripts/WinEventLogs/scanforlolbas.py -p "$d" -l /usr/local/src/lolbas/lolbas.csv |grep -Ev \|FILE\|Shell32.dll.lnkinfo\|Triage-Timeline |tee -a $triage_dir/lolbas/lolbas-$comp_name.txt;done
+    find $triage_dir -type f |grep -Ei jsonl$\|csv$\|txt$ |grep -Ev MFT\|TLN\|Clsid|while read d; 
+	do 
+	  /envs/dfir/bin/python3 /usr/local/src/dfir-scripts/WinEventLogs/scanforlolbas.py -p "$d" -l /usr/local/src/lolbas/lolbas.csv | \
+	  grep -Ev \|FILE\|Shell32.dll.lnkinfo\|Triage-Timeline |tee -a $triage_dir/lolbas/lolbas-$comp_name.txt;done
 
 }
 
@@ -1390,11 +1395,11 @@ function analyze_mft(){
     [ -f "\$MFT" ] && \
     /envs/dfir/bin/analyzeMFT.py -p -f \$MFT --bodyfull --bodyfile=$triage_dir/MFT/analyzeMFT-$comp_name.body
     [ -f $triage_dir/MFT/analyzeMFT-$comp_name.body ] && bodyfile.pl -f $triage_dir/MFT/analyzeMFT-$comp_name.body -s $comp_name | \
-    sort -rn |tee $triage_dir/Timeline/MFT-$comp_name.TLN.txt && \
-    cat $triage_dir/Timeline/MFT-$comp_name.TLN.txt | awk -F'|' '{$1=strftime("%Y-%m-%d %H:%M:%S",$1)}{print $1","$2","$3","$4","$5}'| \
-    tee -a $triage_dir/Timeline/MFT-$comp_name.csv
+    sort -rn |tee $timeline_dir/MFT-$comp_name.TLN.txt && \
+    cat $timeline_dir/MFT-$comp_name.TLN.txt | awk -F'|' '{$1=strftime("%Y-%m-%d %H:%M:%S",$1)}{print $1","$2","$3","$4","$5}'| \
+    tee -a $timeline_dir/MFT-$comp_name.csv
     mft_dump \$MFT -o jsonl -f $triage_dir/MFT/MFT_Dump-$comp_name.jsonl
-    cat $triage_dir/Timeline/MFT-$comp_name.TLN.txt |while read d; do grep -E -i \.lnk$\|\.msi$\|\.exe$\|\.ps1$\|\.hta$\|\.tmp$\|\.rar$\|\.bat\|\.cmd$\|\.vbe$\|\.vbs$\|\.zip  >> $tempfile;done
+    cat $timeline_dir/MFT-$comp_name.TLN.txt |while read d; do grep -E -i \.lnk$\|\.msi$\|\.exe$\|\.ps1$\|\.hta$\|\.tmp$\|\.rar$\|\.bat\|\.cmd$\|\.vbe$\|\.vbs$\|\.zip  >> $tempfile;done
 }
 
 #Extract $USNJRNL:$J to TLN
