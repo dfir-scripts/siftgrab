@@ -716,7 +716,7 @@ function regrip_software(){
     rip.pl -r $software_hive -p networklist 2>/dev/null |tee -a $triage_dir/Registry/Regripper/System_Info/Network/Network-List-$comp_name.txt;
     rip.pl -r $software_hive -p profilelist 2>/dev/null |tee -a $triage_dir/Registry/Regripper/Account_Info/User-Profiles-$comp_name.txt;
     rip.pl -r $software_hive -p pslogging 2>/dev/null |tee -a $triage_dir/Registry/Regripper/Settings/Powershell-logging-$comp_name.txt;
-    rip.pl -r $software_hive -p clsid 2>/dev/null |tee -a $triage_dir/Registry/Regripper/CLSID/Clsid-Registered-Classes$comp_name.txt;
+    rip.pl -r $software_hive -p clsid 2>/dev/null |tee -a $triage_dir/Registry/Regripper/CLSID/Clsid-Registered-Classes-$comp_name.txt;
     rip.pl -r $software_hive -p cmd_shell 2>/dev/null |tee -a $triage_dir/Registry/Regripper/Settings/Cmd_Shell-$comp_name.txt;    
     rip.pl -r $software_hive -p portdev |tee -a $triage_dir/USB/USB_Device_List-$comp_name.txt;
     rip.pl -r $software_hive -p runonceex |grep -va "^$"|tee -a $triage_dir/Registry/Regripper/Run_Keys/Run-Once-$comp_name.txt;
