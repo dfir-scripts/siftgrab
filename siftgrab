@@ -63,19 +63,19 @@ Installation:
       https://github.com/fireeye/BitsParser
       https://github.com/dfir-scripts
       https://github.com/keydet89/Tools
-      https://github.com/obsidianforensics/hindsight (+ requirements.txt)
+      https://github.com/obsidianforensics/hindsight 
       https://github.com/davidpany/WMI_Forensics
-      https://github.com/volatilityfoundation/volatility3 (+ requirements.txt)
+      https://github.com/volatilityfoundation/volatility3 
       https://github.com/kacos2000
       https://github.com/williballenthin/INDXParse
       https://github.com/DidierStevens/DidierStevensSuite
       https://github.com/threeplanetssoftware/sqlite_miner
       https://github.com/brimorlabs/KStrike
-      https://github.com/MarkBaggett/srum-dump (Forked no gui + requirements.txt)
+      https://github.com/MarkBaggett/srum-dump 
       https://github.com/salehmuhaysin/JumpList_Lnk_Parser
-      https://github.com/wagga40/Zircolite (+ requirements.txt)
+      https://github.com/wagga40/Zircolite 
       https://github.com/stuxnet999/EventTranscriptParser
-      https://github.com/Silv3rHorn/4n6_misc (forked)
+      https://github.com/Silv3rHorn/4n6_misc 
       https://github.com/williballenthin/python-registry
       https://github.com/harelsegev/INDXRipper
       https://github.com/omerbenamram/evtx
@@ -110,19 +110,22 @@ Installation:
  ##############################################################################################
   To access the siftgrab menu simply type: sudo siftgrab
 
-  Main Menu:
-    ###########################################################################################
-    dfir-scripts
-    ********************************************************
-    Mount and Extract Information From Windows Disk Images
-    ********************************************************
-      1) Mount a Disk or Disk Image (E01, Raw, AFF, QCOW VMDK, VHDX)
-      2) Analyze Windows Artifacts on a Mounted Image or Acquisition
-      3) Analyze only Windows Event Logs (evtx_dump, Zircolite and custom scripts)
-      4) Run Registry Analysis only (Regripper, Yarp + RegistryFlush, Secretsdump)
-      5) Acquire a Copy of Windows Forensic Artifacts from Mounted Image(s)
-      6) Browse File System (lf)
-      7) Read me
+ dfir-scripts
+********************************************************
+ Mount and Extract Information From Windows Disk Images
+********************************************************
+**  1)  Mount a Disk or Image with ermount 
+        (E01, RAW, AFF, QCOW, VMDK, VHDX or Physical disk)
+**  2)  Single Analysis of Windows Artifacts from a Mounted Image or source(e.g. KAPE, CyLR)
+**  3)  Analyze Windows Artifacts Collected from Multiple Systems (e.g. KAPE, CyLR)
+**  4)  Windows Event Log Extraction and Sigma Scan
+**  5)  Registry Extraction and Timeline (Regripper)
+**  6)  Backup Windows Artifacts from Mounted Image(s)
+**  7)  Browse File System (lf)
+**  8)  Read me
+
+Select a menu option number or enter to exit. 
+
 
     Select a menu option number or enter to exit.
 
@@ -149,7 +152,7 @@ Installation:
         Menu selection #2 prompts for and image source directory (default /mnt/image_mount) and
         destination (default /cases). If data exists and can be parsed, output will be created
         for the following different data types:
-           Creates Timelines Repairs registry hives, dumps lsa secrets and file hashes
+           Creates Timelines Repairs registry hives, dumps lsa secrets and NTLM hashes
            MFT, USNJRNL, RecycleBin, Prefetch, Windows Event Logs, Chrome, Firefox, Brave,
            Jumplist, LNK, Registry, Amcache, OBJECTS.DATA, BITS, Alternate Data Streams, services,
            jobs, scheduled tasks, winactivities,Chrome, Firefox, IE/Edge, srudb, current.mdb,
@@ -251,12 +254,13 @@ function show_menu(){
     echo -e "********************************************************"
     echo -e "**  1) ${GREEN} Mount a Disk or Image with ermount 
         (E01, RAW, AFF, QCOW, VMDK, VHDX or Physical disk)${NORMAL}"
-    echo -e "**  2)${GREEN}  Extract Windows Artifacts from Mounted Image, KAPE, CyLR${NORMAL}"
-    echo -e "**  3)${GREEN}  Windows Event Log Extraction and Sigma Scan${NORMAL}"
-    echo -e "**  4) ${GREEN} Registry Extraction and Timeline (Regripper)${NORMAL}"
-    echo -e "**  5) ${GREEN} Backup Windows Artifacts from Mounted Image(s)${NORMAL}"
-    echo -e "**  6) ${GREEN} Browse File System (lf)${NORMAL}"
-    echo -e "**  7) ${GREEN} Read me${NORMAL}"
+    echo -e "**  2)${GREEN}  Single Analysis of Windows Artifacts from a Mounted Image or source(e.g. KAPE, CyLR)${NORMAL}"
+    echo -e "**  3)${GREEN}  Analyze Windows Artifacts Collected from Multiple Systems (e.g. KAPE, CyLR)${NORMAL}"    
+    echo -e "**  4)${GREEN}  Windows Event Log Extraction and Sigma Scan${NORMAL}"
+    echo -e "**  5) ${GREEN} Registry Extraction and Timeline (Regripper)${NORMAL}"
+    echo -e "**  6) ${GREEN} Backup Windows Artifacts from Mounted Image(s)${NORMAL}"
+    echo -e "**  7) ${GREEN} Browse File System (lf)${NORMAL}"
+    echo -e "**  8) ${GREEN} Read me${NORMAL}"
     echo ""
     echo -e "Select a menu option number or ${RED}enter to exit. ${NORMAL}"
     read opt
@@ -288,81 +292,95 @@ while [ opt != '' ]
            save_artifacts
            source /envs/dfir/bin/activate
            start_time=$SECONDS
-          #todo  event_transcript_parser
-          repair_hives
-          jumplink_parser
-          lnkinfo
-          rip_software
-          rip_system
-          rip_security
-          rip_sam
-          rip_ntuser_usrclass
-          rip_amcache.hve
-          secrets_dump
-          timeline_registry
-          prefetch_extract
-          objects_data_extract
-          jobs_extract
-          recbin2tln
-          chrome2tln
-          firefox2tln
-          webcachev_dump
-          winservices
-          srum_dump
-          kstrike_current.mdb
-          bits_parser
-          extract_winactivities
-          extract_PCA
-          evtx_dump_json
-          Winevtx_parse
-          zircolite_evtx
-          analyze_mft
-          dump_mft
-          [ "$usn" ] && parse_usn
+           #todo  event_transcript_parser
+           repair_hives
+           jumplink_parser
+           lnkinfo
+           rip_software
+           rip_system
+           rip_security
+           rip_sam
+           rip_ntuser_usrclass
+           rip_amcache.hve
+           secrets_dump
+           timeline_registry
+           prefetch_extract
+           objects_data_extract
+           jobs_extract
+           recbin2tln
+           browser_extract
+           winservices
+           kstrike_current.mdb
+           bits_parser
+           extract_winactivities
+           extract_PCA
+           evtx_dump_json
+           Winevtx_parse
+           zircolite_evtx
+           srum_dump
+           analyze_mft
+           dump_mft
+           [ "$usn" ] && parse_usn
            consolidate_timeline
            scan_for_lolbas
            [ "$artifacts" ] && cp_artifacts
            #Clean-up
            deactivate
-           find $case_dir -empty -delete
            make_green "Removing Duplicates..."
            echo "Please Wait..."
-           fdupes -rdN $case_dir
+           fdupes -rdN $case_dir  
            make_green "The Processed Artifacts are Located in $triage_dir"
            du -sh $triage_dir
            make_green Process Complete!
            elapsed=$(( SECONDS - start_time ))
            date >> $triage_dir/Triage-Timestamp.txt
            eval "echo Elapsed time: $(date -ud "@$elapsed" +' %H hrs %M mins %S secs')" |tee -a $triage_dir/Triage-Timestamp.txt
+           find $case_dir -empty -delete  
+           read -n1 -r -p "Press any key to continue..." key
+           show_menu;
+            ;;
+        #Menu Selection: Process Artifacts Collected using RegRipper and other Tools
+        3) clear;
+          make_green "
+Enter path containing multiple extracted Kape or Cylr collections 
+(DATA SOURCE/server_names/drive_letters)
+          " 
+          set_msource_path
+          echo $mount_dir
+          set_dsource_path
+          echo $case_dir
+          recurse_source
+          exit
+
            read -n1 -r -p "Press any key to continue..." key
            show_menu;
             ;;
         #Menu Selection: Extract Windows Event Log to jsonl
-        3) clear;
+        4) clear;
            make_green "Analyze Windows Event Logs (evtx_dump, Zircolite and custom scripts)"
            make_green "Default Source Directory: Windows/System32/winevt/Logs"
            set_msource_path
            set_windir
            set_dsource_path
            #timeline_dir="$/Timeline"
-           get_evtxsize
            make_red "Exporting Windows Event Logs to jsonl"
-           Winevtx_parse
+           #Winevtx_parse
            evtx_dump_json
            read -n1 -r -p "Press any key to continue..." key
            clear
            show_menu;
             ;;
         #Menu Selection: Run Regripper on a mounted volume or data source
-        4) clear;
+        5) clear;
            make_green "Run Registry Analysis tools (Regripper, Yarp + RegistryFlush, Secretsdump)"
            set_msource_path
+           
            set_windir
            get_computer_name
            set_dsource_path
            check_dsource_path
            /opt/app/dfir-scripts/shellscripts/regripperall.sh $mount_dir
-           /envs/dfir/bin/python /usr/share/doc/python3-impacket/examples/secretsdump.py -sam $sam_hive -system $system_hive -security $security_hive local >> $case_dir/Secretsdump.txt
+           python /usr/share/doc/python3-impacket/examples/secretsdump.py -sam $sam_hive -system $system_hive -security $security_hive local >> $case_dir/Secretsdump.txt
            timeline_dir=$case_dir/Timeline
            timeline_registry
            read -n1 -r -p "Press any key to continue..." key
@@ -370,24 +388,23 @@ while [ opt != '' ]
            show_menu;
             ;;
         #Menu Selection:  Acquire Data from Mounted Disks or Image Excerpts
-        5) clear;
+        6) clear;
            /opt/app/dfir-scripts/shellscripts/grab-winfiles.sh
            read -n1 -r -p "Press any key to continue..." key
            clear;
            show_menu;
             ;;
         #Menu Selection:Lf File Browser
-        6) clear;
+        7) clear;
            cd /cases
            lf
            clear;
            show_menu;
             ;;
         #Menu Selection:dfir-scripts Readme and Tools
-        7) clear;
-           cd /opt/share
-           read_me
-           read -n1 -r -p "Press any key to return to menu..." key
+        8) clear;
+           cd /opt/app
+           read_me |less
            show_menu;
             ;;
         x)exit;
@@ -425,10 +442,10 @@ function set_dsource_path(){
       [ ! -d "${case_dir}" ] && make_red "Path does not exist.." && sleep 2 && show_menu
       cd $case_dir
       [ ! -d "${case_dir}" ] && make_red "Path does not exist.." && sleep 1 && show_menu
-      case_dir="$case_dir/$comp_name"
-      triage_dir="$case_dir/Triage"
-      timeline_dir="$triage_dir/Timeline"
-      artifact_dir="$case_dir/Artifact"
+      [ "$opt" != "3" ]  && case_dir="$case_dir/$comp_name"
+      [ "$opt" != "3" ]  && triage_dir="$case_dir/Triage"
+      [ "$opt" != "3" ]  && timeline_dir="$triage_dir/Timeline"
+      [ "$opt" != "3" ]  && artifact_dir="$case_dir/Artifact"
 }
 function check_dsource_path(){
       [ -d "$triage_dir" ] && echo "$case_dir already exists! overwrite?" && \
@@ -459,6 +476,7 @@ function set_windir(){
       [ "$winsysdir" != "" ] && echo "Windows System32 Directory => $mount_dir$winsysdir"
       [ "$regdir" != "" ] && echo  "Registry Directory =>" $mount_dir$winsysdir$regdir
       [ "$evtxdir" != "" ] && echo  "Windows Eventlog Directory =>" $mount_dir$winsysdir$evtxdir
+      echo "Users Dir =>" $user_dir
 }
 
 #Get Computer Name using Regripper's "comp_name" plugin
@@ -507,9 +525,11 @@ function get_logsize(){
 #Check USNJRNL Size and option to include in backup
 function get_usnjrlnsize(){
     cd $mount_dir
-    du -sh \$Extend/\$UsnJrnl:\$J 2>/dev/null
-    make_red "PROCESS \$USNJRNL and \$LogFile?"
-    yes_no && usn="yes"
+    if [ -f "\$Extend/\$UsnJrnl:\$J" ] ; then
+      du -sh \$Extend/\$UsnJrnl:\$J 2>/dev/null
+      make_red "PROCESS \$USNJRNL and \$LogFile?"
+      yes_no && usn="yes"
+    fi
 }
 
 #Check Windows Event Logs Size
@@ -767,6 +787,73 @@ function get_firefox(){
 
 ######### PROCESSING FUNCTIONS##############
 
+function recurse_source(){
+    recurse_mount_dir=$mount_dir
+    recurse_triage_dir=$triage_dir
+    recurse_case_dir=$case_dir
+    recurse_timeline_dir=$timeline_dir
+    source /envs/dfir/bin/activate   
+    find $mount_dir -maxdepth 2 -type d 2>/dev/null |grep -Ei \/[A-Z]{1}$ | sed 's|${mount_dir}||'|awk -F'/' '{print "/"$(NF-1)"/"$NF}' | \
+    while read d;
+    do
+      start_time=$SECONDS
+      mount_dir=$mount_dir$d/
+      set_windir
+      get_computer_name
+      case_dir="$case_dir/$comp_name"
+      triage_dir="$case_dir/Triage"
+      timeline_dir="$triage_dir/Timeline"
+      artifact_dir="$case_dir/Artifact"
+      create_triage_dir
+      repair_hives
+      jumplink_parser
+      lnkinfo
+      rip_software
+      rip_system
+      rip_security
+      rip_sam
+      rip_ntuser_usrclass
+      rip_amcache.hve
+      secrets_dump
+      timeline_registry
+      prefetch_extract
+      objects_data_extract
+      jobs_extract
+      recbin2tln
+      browser_extract
+      winservices
+      kstrike_current.mdb
+      bits_parser
+      extract_winactivities
+      extract_PCA
+      evtx_dump_json
+      Winevtx_parse
+      zircolite_evtx
+      srum_dump
+      analyze_mft
+      dump_mft
+      consolidate_timeline
+      scan_for_lolbas
+      Clean-up
+      make_green "Removing Duplicates..."
+      echo "Please Wait..."
+      fdupes -rdN $case_dir
+      make_green "The Processed Artifacts are Located in $triage_dir"
+      du -sh $triage_dir
+      make_green Process Complete!
+      elapsed=$(( SECONDS - start_time ))
+      echo "Completed at:"
+      date 2>/dev/null >> $triage_dir/Triage-Timestamp.txt 
+      eval "echo Elapsed processing time: $(date -ud "@$elapsed" +' %H hrs %M mins %S secs')" |tee -a $triage_dir/Triage-Timestamp.txt
+      find $case_dir -empty -delete                 
+      comp_name=""
+      mount_dir=$recurse_mount_dir
+      triage_dir=$recurse_triage_dir
+      case_dir=$recurse_case_dir
+      timeline_dir=$recurse_timeline_dir
+    done
+}
+
 #Read registry hives and merge transaction logs for dirty hives
 function repair_hives(){
   find $mount_dir/$winsysdir/$regdir -maxdepth 1 -type f 2>/dev/null | \
@@ -786,19 +873,14 @@ function repair_hives(){
       make_green "Yarp + registryFlush -> reading "$user_name"/NTUSER.DAT"
       /envs/dfir/bin/python3 /usr/local/src/Silv3rhorn/registryFlush.py -f \
       "$ntuser_path" -o $triage_dir/Registry/yarp-registryflush.py/"$user_name"
-      find $triage_dir/Registry/yarp-registryflush.py/${user_name}/${user_name}* -type f 2>/dev/null && \
-      echo ${user_name} " is dirty logs -> merged" \
-      >> $triage_dir/Registry/yarp-registryflush.py/Hive-State-$comp_name.txt
-      find $triage_dir/Registry/yarp-registryflush.py/${user_name}/${user_name}* -type f 2>/dev/null || \
-      echo ${user_name}"/NTUSER.DAT is Clean" \
-      >> $triage_dir/Registry/yarp-registryflush.py/Hive-State-$comp_name.txt
       sleep .5
     done
+  find $triage_dir/Registry/yarp-registryflush.py/ -type f|while read d; do a=$(echo "$d"| awk -F'/' '{print $(NF)}'); rip.pl -a -r $d >> $triage_dir/Registry/Regripper/"$a";done
 }
 
 function jumplink_parser(){
   cd $mount_dir
-  lnk_exists=$(find $mount_dir/$user_dir/*/Recent/ maxdepth 1 -type f 2>/dev/null |grep -i -m1 lnk$)
+  lnk_exists=$(find $mount_dir/$user_dir/*/AppData/Roaming/Microsoft/Windows/Recent/ maxdepth 1 -type f 2>/dev/null |grep -i -m1 lnk$)
   if [ -f "$lnk_exists" ]; then
     make_green "Running JLParse.py extracting LNKS and Jumplists to json"
     /envs/dfir/bin/python3 /opt/app/JumpList_Lnk_Parser/JLParser.py -p -a \
@@ -807,17 +889,16 @@ function jumplink_parser(){
     sleep 1
 
     /usr/local/src/dfir-scripts/WinEventLogs/jq/JLParser-stats.sh \
-    $triage_dir/LNK/JumpList_Lnk_Parser-$comp_name.json \
-    >> $triage_dir/LNK/JL-stats-$comp_name.txt 
+    $triage_dir/LNK/JumpList_Lnk_Parser-$comp_name.json >> $triage_dir/LNK/JL-stats-$comp_name.txt 
   fi
 }
 
 function lnkinfo(){
  cd $mount_dir
- lnk_exists=$(find $mount_dir/$user_dir/*/Recent/ maxdepth 1 -type f 2>/dev/null |grep -i -m1 lnk$)
+ lnk_exists=$(find $mount_dir/$user_dir/*/AppData/Roaming/Microsoft/Windows/Recent/ maxdepth 1 -type f 2>/dev/null |grep -i -m1 lnk$)
  if [ -f "$lnk_exists" ]; then
   make_green "extracting lnk files (lnkinfo)"
-  find $mount_dir/$user_dir/*/ -type f|grep lnk$ | \
+  find $mount_dir/$user_dir/ -type f|grep lnk$ | \
   while read d;
   do
     echo $d && \
@@ -833,7 +914,7 @@ function rip_software(){
     make_green "Running select RegRipper plugins on the Software Registry Hives"
     sleep 1
     rip.pl -r $software_hive -p winver \
-    >> $triage_dir/Registry/Regripper/System_Info/Windows_Version_Info-$comp_name.txt;
+    >> $triage_dir/Windows_Version_Info-$comp_name.txt;
     rip.pl -r $software_hive -p lastloggedon  \
     >> $triage_dir/Registry/Regripper/Account_Info/Last-Logged-On-$comp_name.txt;
     rip.pl -r $software_hive -p networklist 2>/dev/null \
@@ -970,7 +1051,7 @@ function rip_sam(){
     find $mount_dir/$winsysdir/$regdir -maxdepth 1 -type f 2>/dev/null | grep -i "\/sam$" |\
     while read d;
     do
-      rip.pl -aT -r $d |sed "s/|||/|${comp_name}||/" >> $tempfile
+      rip.pl -aT -r $d |sed "s/|SAM||/|SAM|${comp_name}|/" >> $tempfile
     done
   fi
 }
@@ -1115,12 +1196,12 @@ function rip_ntuser_usrclass(){
 
 #Run RegRipper on AmCache.hve
 function rip_amcache.hve(){
-    make_green "Extracting Any RecentFileCache/AmCache (amcache.py)"
   if [ -f "$amcache_hive" ]; then
+    make_green "Extracting Any RecentFileCache/AmCache (amcache.py)"
     rip.pl -aT -r "$amcache_hive" 2>/dev/null | sed "s/|||/|${comp_name}|${user_name}|/" \
     >> $tempfile
-    rip.pl -r "$amcache_hive" -p amcache 2>/dev/null \
-    >> "$triage_dir/Amcache/Amcache-$comp_name.txt"
+    rip.pl -aT -r "$amcache_hive" 2>/dev/null | sed "s/|||/|${comp_name}|${user_name}|/" | \
+    awk -F'|' '{$1=strftime("%Y-%m-%d %H:%M:%S",$1)}{print $1","$2","$3","$4","$5}' >> "$triage_dir/Amcache/Amcache-$comp_name.csv"
   fi
 }
 
@@ -1128,9 +1209,7 @@ function rip_amcache.hve(){
 function secrets_dump(){
   if [ -f "$sam_hive" ]; then
     make_green "Dumping Hashes and LSA Secrets (secrets_dump.py)"
-    python /usr/share/doc/python3-impacket/examples/secretsdump.py \
-    -sam $sam_hive -system $system_hive -security $security_hive local \
-    >> $triage_dir/Registry/Impacket/secrets_dump-$comp_name.txt
+    python /usr/share/doc/python3-impacket/examples/secretsdump.py -sam $sam_hive -system $system_hive -security $security_hive local >> $triage_dir/Registry/Impacket/secrets_dump-$comp_name.txt
   fi
 }
 
@@ -1183,11 +1262,11 @@ function winservices(){
 function prefetch_extract(){
   cd $mount_dir
   prefetch=$(find /$mount_dir/$windir/ -maxdepth 1 -type d -iname *prefetch*)
-  if [ -d "$prefetch" ]; then
+  if  [ "$(ls -A /$mount_dir/$windir/Prefetch 2>/dev/null)" ]; then
     rm /tmp/prc.txt 2>/dev/null
     make_green "Searching for Prefetch Files (prefetchruncounts.py)"
     /envs/dfir/bin/python3 /opt/app/dfir-scripts/python/prefetchruncounts.py "$prefetch" \
-    >> $triage_dir/Prefetch/prefetchruncounts-$comp_name.txt
+    >> $triage_dir/Prefetch/prefetchruncounts-$comp_name.csv
     /envs/dfir/bin/python3 /opt/app/dfir-scripts/python/prefetchruncounts.py "$prefetch" -t >> /tmp/prc.txt
     sleep 1
     [ -f "/tmp/prc.txt" ] && cat /tmp/prc.txt |while read d;
@@ -1205,8 +1284,8 @@ function prefetch_extract(){
 
 #Parse OBJECTS.DATA file
 objects_data_extract(){ 
-  objects_data=$(find $winsysdir/wbem/Repository/| grep -i -m1 '\/objects.data$')
   if [ -f "$objects_data" ]; then
+    objects_data=$(find $winsysdir/wbem/Repository/| grep -i -m1 '\/objects.data$')
     cd $mount_dir
     make_green "Parsing OBJECTS.DATA file (PyWMIPersistenceFinder.py, CCM-RecentApps.py)"
     sleep 1
@@ -1243,8 +1322,7 @@ function jobs_extract(){
 
 #Timeline recycle.bin metadata
 function recbin2tln(){
-  if [ "ls $mount_dir/\$Recycle.Bin 2>/dev/null" ]; then
-    echo ""
+  if  [ "$(ls -A /$mount_dir/\$Recycle.Bin 2>/dev/null)" ]; then
     make_green "Parsing \$Recycle.Bin (recbin2tln)"
     /usr/local/src/dfir-scripts/shellscripts/recbin2tln.sh . -c |sed "s/cle,,/cle,$comp_name|/" \
     >> $triage_dir/Deleted_Files/Recycled-$comp_name.csv
@@ -1253,171 +1331,23 @@ function recbin2tln(){
   fi
 }
 
-#Timeline Chrome/Brave metadata
-function chrome2tln(){
-  cd $mount_dir
-  browser_dir=$(find $user_dir/*/AppData/Local/ -type d |grep -E "Google/Chrome/User Data/Default$"\|"BraveSoftware/Brave-Browser/User Data/Default$")
-  if [ "$browser_dir" ] ; then
-    make_green "Looking for Chrome and Brave Browser files..."
-    echo "${browser_dir}" | \
-    while read d;
-    do
-      browser_type=$(echo "$d" |grep -oE -m1 Chrome\|BraveS |grep -oE Chrome\|Brave)
-      user_name=$(echo "$d"|sed 's/\/AppData.*//'|sed 's/^.*\///')
-      cd "$mount_dir/$d"
-      if [ -f "History" ]; then
-        #Extract Chrome/Brave Browsing history
-        cd "$mount_dir/$d"
-        make_green "Searching for $browser_type History (sqlite3)" 
-        sqlite3 "History" "select datetime(last_visit_time/1000000-11644473600, 'unixepoch'),url, title, visit_count from urls ORDER BY last_visit_time" | \
-        awk -F'|' '{print $1",,,,[URL]:"$2",TITLE: "$3", VISIT COUNT:"$4}'| \
-        sed "s/,,,,/,${browser_type},${comp_name},${user_name},/" >> "$triage_dir/Browser_Activity/$user_name-$browser_type-History-$comp_name.csv"
-        make_green "Searching for $browser_type Browser Search Strings (sqlite3)"
-        [ -f "$triage_dir/Browser_Activity/$user_name-$browser_type-History-$comp_name.csv" ]  && \
-        cat "$triage_dir/Browser_Activity/$user_name-$browser_type-History-$comp_name.csv" | grep -aP ".com/search\?q"\["\W"] |\
-        awk -v FS="([hH][tT][tT][Pp]|&)" '{print "http"$2}' >> $triage_dir/Browser_Activity/$user_name-$browser_type-Searches-$comp_name.csv
-        [ -f "$triage_dir/Browser_Activity/$user_name-$browser_type-History-$comp_name.csv" ]  && \
-        cat "$triage_dir/Browser_Activity/$user_name-$browser_type-History-$comp_name.csv" | grep -aP ".com/search\?[^q][^=]"| \
-        awk -v FS="([hH][tT][tT][Pp]| )" '{print "http"$2}'>> $triage_dir/Browser_Activity/$user_name-$browser_type-Searches-$comp_name.csv
-        # Extract Chrome/Brave Downloads
-        make_green "Searching for "$browser_type" Downloads (sqlite3)"
-        sqlite3 "History" "select datetime(start_time/1000000-11644473600, 'unixepoch'), url, target_path, total_bytes FROM downloads INNER JOIN downloads_url_chains ON downloads_url_chains.id = downloads.id ORDER BY start_time" | \
-        awk -F'|' '{print $1",,,,[DOWNLOAD]-"$2",TARGET:-"$3", BYTES TRANSFERRED:-"$4}' | \
-        sed "s/,,,,/,${browser_type},${comp_name},${user_name},/" \
-        >> "$triage_dir/Browser_Activity/$user_name-$browser_type-Download-$comp_name.csv"
-        #Extract Chrome/Brave cookies
-        if [ -f "$d/Cookies" ]; then
-          make_green "Searching for "$browser_type" COOKIES (sqlite3)"
-          ls "Cookies" 2>/dev/null && \
-          sqlite3 "Cookies" "select datetime(cookies.creation_utc/1000000-11644473600, 'unixepoch'), cookies.host_key,cookies.path, cookies.name, datetime(cookies.last_access_utc/1000000-11644473600,'unixepoch','utc'), cookies.value FROM cookies"| \
-          awk -F'|' '{print $1",,,,[Cookie Created]:"$2" LASTACCESS: "$5" VALUE: "$4}'| \
-          sed "s/,,,,/,${browser_type},${comp_name},${user_name},/" \
-          >> "$triage_dir/Browser_Activity/$user_name-$browser_type-Cookies-$comp_name.csv"
-        fi
+function browser_extract(){
+   /usr/local/src/dfir-scripts/shellscripts/browser_extract.sh /$mount_dir/ $case_dir/Triage/Browser_Activity/
 
-        #Extract Chrome/Brave Login Data
-        if [ -f "Login Data" ]; then
-          make_green "Searching for "$BROWSER_TYPE" Login Data (sqlite3)"
-          sqlite3 "Login Data" "select datetime(date_created/1000000-11644473600, 'unixepoch'), origin_url,username_value,signon_realm FROM logins"| \
-          awk -F'|' '{print $1",,,,[Login Data]:SITE_ORIGIN:"$2" USER_NAME: "$3" SIGNON_REALM "$4}' |\
-          sed "s/,,,,/,${browser_type},${comp_name},${user_name},/" \
-          >> "$triage_dir/Browser_Activity/$user_name-$browser_type-LoginData-$comp_name.csv"
-        fi
-          
-        #Extract Chrome/Brave Web Data
-        if [ -f "Web Data" ]; then       
-          make_green "Searching for "$browser_type" Web Data (sqlite3)"
-          sqlite3 "Web Data" "select datetime(date_last_used, 'unixepoch'), name,value, count, datetime(date_created, 'unixepoch') from autofill" | \
-          awk -F'|' '{print $1",,,,[WebData] CREATED:"$5" NAME:"$2" VALUE:"$3" COUNT:"$4}' |\
-          sed "s/,,,,/,${browser_type},${comp_name},${user_name},/" >> "$triage_dir/Browser_Activity/$user_name-$browser_type-WebData-$comp_name.csv"
-        fi
-
-        #Extract Chrome Bookmarks
-        if [ -f "Bookmarks" ] ; then
-          make_green "Searching for "$browser_type" Bookmarks (sqlite3)"
-          cat "Bookmarks" |jq -r '.roots[]|recurse(.children[]?)|select(.type != "folder")|{date_added,name,url}|join("|")'|\
-          awk -F'|' '{print int($1/1000000-11644473600)"|"$2"|"$3}'| \
-          awk -F'|' '{$1=strftime("%Y-%m-%d %H:%M:%S",$1)}{print $1",,,,[Bookmark Created] NAME:"$2" URL:"$3}' |\
-          sed "s/,,,,/,${browser_type},${comp_name},${user_name},/" \
-          >> "$triage_dir/Browser_Activity/$user_name-$browser_type-Bookmarks-$comp_name.csv"
-        fi
-      fi
-    done
-    # Copy Files to Timeline Temp File
-    find $triage_dir/Browser_Activity/ -type f |grep -iE chrome\|brave  |\
-    while read d;
-    do
-      cat "$d" |while read line;
-      do
-        timestamp=$(echo $line| awk -F',' '{print $1}' | \
-        grep -Eo '^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[1-2][0-9]|3[0-1]) (2[0-3]|[01][0-9]):[0-5][0-9]:[0-5][0-9]')
-        [ "$timestamp" != "" ] && tlntime=$(date -d "$timestamp"  +"%s" 2>/dev/null)
-        [ "$tlntime" != "" ] && tlninfo=$(echo "$f"| awk -F',' '{print "|"$2"|"$3"|"$4"|"$5}')
-        tlninfo=$(echo "$line"| awk -F',' '{print "|"$2"|"$3"|"$4"|"$5}')
-        echo $tlntime$tlninfo |grep -v "||||" >> $tempfile
-      done
-    done
-
-    # Run Hindsight on Users Directory
-    make_green "Running Hindsight on $user_dir Directory"
-    mkdir -p $triage_dir/Browser_Activity/tmp
-    cd $mount_dir
-    /envs/dfir/bin/python3 /usr/local/src/Hindsight/hindsight.py   -i "$user_dir" -o "$triage_dir/Browser_Activity/Hindsight-$comp_name" -l "$triage_dir/Browser_Activity/hindsight.log" --temp_dir $triage_dir/Browser_Activity/tmp
-  fi
-}
-
-#Extract FireFox Browser Info (places.sqlite)
-function firefox2tln(){
-  cd $mount_dir
-  find $user_dir/*/AppData/Roaming/Mozilla/Firefox/Profiles/*/ -maxdepth 0 -type d 2>/dev/null|\
-  while read d;
-  do
-    if [  -f "$d/places.sqlite" ]; then
-      make_green "Extracting Any Firefox Browser Info (sqlite3)"
-      user_name=$(echo "$d"|sed 's/\/AppData.*//'|sed 's/^.*\///')
-      #Extract FireFox History 
-      sqlite3 file:"$d/places.sqlite" "select (moz_historyvisits.visit_date/1000000), moz_places.url, moz_places.title, moz_places.visit_count FROM moz_places,moz_historyvisits where moz_historyvisits.place_id=moz_places.id order by moz_historyvisits.visit_date;" 2>/dev/null |\
-      awk -F'|' '{print $1"|FireFox|||[URL]:"$2"  TITLE:"$3" VISIT-COUNT:" $4}'| \
-      sed "s/|||/|${comp_name}|${user_name}|/" \
-      >> "$triage_dir/Browser_Activity/$user_name-FireFox-History-$comp_name.csv"
-      cat "$triage_dir/Browser_Activity/$user_name-FireFox-History-$comp_name.csv" | \
-      grep -aP ".com/search\?q"\["\W"] | awk -v FS="([hH][tT][tT][Pp]|&)" '{print "http"$2}' \
-      >> $triage_dir/Browser_Activity/$user_name-Firefox-Searches-$comp_name.csv
-      cat "$triage_dir/Browser_Activity/$user_name-FireFox-History-$comp_name.csv" | \
-      grep -aP ".com/search\?[^q][^=]" | awk -v FS="([hH][tT][tT][Pp]| )" '{print "http"$2}' \
-      >> $triage_dir/Browser_Activity/$user_name-Firefox-Searches-$comp_name.csv
-      # Extract FireFox Downloads
-      sqlite3 file:"$d/places.sqlite" "select (startTime/1000000), source,target,currBytes,maxBytes FROM moz_downloads" 2>/dev/null |\
-      awk -F'|' '{print $1"|FireFox|||[Download]:"$2"=>"$3" BYTES DOWNLOADED=>"$4" TOTAL BYTES=>"$5}' |\
-      sed "s/|||/|${comp_name}|${user_name}|/" \
-      >> "$triage_dir/Browser_Activity/$user_name-FireFox-Downloads-$comp_name.csv"
-      #Extract FireFox cookies
-      [ "$d/cookies.sqlite" ] && \
-      sqlite3 file:"$d/cookies.sqlite" "select (creationTime/1000000), host,name,datetime((lastAccessed/1000000),'unixepoch','utc'),datetime((expiry/1000000),'unixepoch','utc') FROM moz_cookies" 2>/dev/null|\
-      awk -F'|' '{print $1"|FireFox||| [Cookie Created]: "$2" NAME:"$3" ,LAST ACCESS:"$4", EXPIRY: "$5}'| \
-      sed "s/|||/|${comp_name}|${user_name}|/" \
-      >> "$triage_dir/Browser_Activity/$user_name-FireFox-Cookies-$comp_name.csv"
-    fi
-  done
-    # Copy Files to Timeline Temp File
-    find $triage_dir/Browser_Activity/ -type d |grep "FireFox" 2>/dev/null| \
-    while read d;
-    do
-      echo "$d"| while read f;
-        do
-        timestamp=$(echo "$f"| awk -F',' '{print $1}' | grep -Eo '^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[1-2][0-9]|3[0-1]) (2[0-3]|[01][0-9]):[0-5][0-9]:[0-5][0-9]')
-          [ "$timestamp" != "" ] && tlntime=$(date -d "$timestamp"  +"%s" 2>/dev/null)
-          tlninfo=$(echo "$f"| awk -F',' '{print "|"$2"|"$3"|"$4"|"$5}')
-          [ "$tlninfo" != "" ] && echo $tlntime$tlninfo  >> $tempfile
-        done
-      done
-}
-
-function webcachev_dump(){
-  cd $mount_dir/$user_dir/
-  web_cachev=$(find /$mount_dir/$user_dir/*/AppData/Local/Microsoft/Windows/WebCache -maxdepth 2 -type f |grep -i -m1 "WebcacheV" )
-  if [  -f "$web_cachev" ]; then
-    make_green "Extracting any IE WebcacheV0x.dat files (esedbexport)"
-    find "$mount_dir/$user_dir/" -maxdepth 2 ! -type l|grep -i ntuser.dat$ |\
-    while read ntuser_path;
-    do
-      user_name=$( echo "$ntuser_path"|sed 's/\/$//'|awk -F"/" '{print $(NF-1)}')
-      find /$mount_dir/$user_dir/$user_name/AppData/Local/Microsoft/Windows/WebCache -maxdepth 2 -type f -iname "WebcacheV*.dat" 2>/dev/null |\
-      while read d;
-      do
-        /usr/bin/esedbexport -t $triage_dir/Browser_Activity/esedbexport-Webcachev01.dat-$user_name-$comp_name "$d" 2>/dev/null;
-      done
-      find $triage_dir/Browser_Activity/esedbexport-Webcachev01.dat-$user_name-$comp_name.export -type d 2>/dev/null| \
-      while read dir;
-      do
-        grep -hir Visited: $dir |awk '{ s = ""; for (i = 9; i <= NF; i++) s = s $i " "; print s }'|awk -v last=26 '{NF = last} 1' \
-        >> $triage_dir/Browser_Activity/grep-esedbexport-Webcachev01.dat-$user_name-$comp_name.csv
-        cat "$triage_dir/Browser_Activity/grep-esedbexport-Webcachev01.dat-$user_name-$comp_name.csv" | \
-        grep -aP ".com/search\?q"\["\W"] | awk -v FS="([hH][tT][tT][Pp]|&)" '{print "http"$2}' \
-        >> $triage_dir/Browser_Activity/$user_name-IE-Edge-Searches-$comp_name.csv
-      done
-    done
-  fi  
+   # Copy Files to Timeline Temp File
+   find $triage_dir/Browser_Activity/ -type f |grep -iE chrome\|brave\|firefox  |\
+   while read d;
+   do
+     cat "$d" |while read line;
+     do
+       timestamp=$(echo $line| awk -F',' '{print $1}' | \
+       grep -Eo '^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[1-2][0-9]|3[0-1]) (2[0-3]|[01][0-9]):[0-5][0-9]:[0-5][0-9]')
+       [ "$timestamp" != "" ] && tlntime=$(date -d "$timestamp"  +"%s" 2>/dev/null)
+       [ "$tlntime" != "" ] && tlninfo=$(echo "$f"| awk -F',' '{print "|"$2"|"$3"|"$4"|"$5}')
+       tlninfo=$(echo "$line"| awk -F',' '{print "|"$2"|"$3"|"$4"|"$5}')
+       echo $tlntime$tlninfo |grep -v "||||" >> $tempfile
+     done
+   done
 }
 
 function srum_dump(){
@@ -1443,11 +1373,10 @@ function kstrike_current.mdb(){
 
 #Run Bits_Parser.py
 function bits_parser(){
-  qmgr_db=$(find /mnt/image_mount/ProgramData/Microsoft/Network/Downloader/ -type d 2>/dev/null)
-  if [ -d "$qmgr_db" ]; then
+  if [ -d "$mount_dir/ProgramData/Microsoft/Network/Downloader/" ]; then
     make_green "Searching and extracting qmgr.db (BitsParser.py)"
     /envs/dfir/bin/python /usr/local/src/BitsParser/BitsParser.py -i \
-    /mnt/image_mount/ProgramData/Microsoft/Network/Downloader/ --carvedb --carveall 2>/dev/null \
+    $mount_dir/ProgramData/Microsoft/Network/Downloader/ --carvedb --carveall 2>/dev/null \
     >> $triage_dir/BITS/BitsParser.py-$comp_name.csv
   fi
 }
@@ -1466,8 +1395,7 @@ extract_winactivities(){
         grep -i "ActivitiesCache.db$"| sed 's|^\./||'|\
         while read d;
         do
-          sqlite3 "$d" ".read /opt/app/kacos2000/WindowsTimeline/WindowsTimeline.sql" \
-          >> $triage_dir/ActivitiesCache/WindowsTimeline.sql-$user_name-$comp_name.csv
+          sqlite3 "$d" ".read /opt/app/kacos2000/WindowsTimeline/WindowsTimeline.sql" 2>/dev/null >> $triage_dir/ActivitiesCache/WindowsTimeline.sql-$user_name-$comp_name.csv
        done
     done
     find $triage_dir/ActivitiesCache/ -type f 2>/dev/null |grep WindowsTimeline.sql | \
@@ -1498,7 +1426,7 @@ extract_PCA(){
       tl_time=$(echo $tln_time | awk '{$0=strftime("%Y-%m-%d %H:%M:%S",$0)}{print $0}')
       tln_line=$tln_time"|PCAdic|"$comp_name"||Program Execution:"$pca_path
       tl_line=$tl_time",PCA,"$comp_name",,Program Execution:"$pca_path
-      echo $tl_line >> $triage_dir/PCA/PcaAppLaunchDic.txt
+      echo $tl_line >> $triage_dir/PCA/PcaAppLaunchDic.csv
       echo $tln_line  >> $tempfile
     done
 
@@ -1538,7 +1466,7 @@ function evtx_dump_json(){
       evtx_dump "$d" -o jsonl -f "$triage_dir/WindowsEventLogs/evtx_dump/$evtx_file.jsonl"
     done
     find $triage_dir/WindowsEventLogs/evtx_dump/ -type f 2>/dev/null | \
-    grep Microsoft-Windows-PowerShell%4Operational.evtx.jsonl| \
+    grep Microsoft-Windows-PowerShell%4Operational.evtx.jsonl | \
     while read d;
     do
       cat "$d" |jq -j '.Event|select(.EventData.ScriptBlockText !=null)|.System.Computer,.System.TimeCreated."#attributes".SystemTime,.EventData.Path,.System.Security."#attributes".UserID,.EventData.ScriptBlockText,.System.Channel' >> $triage_dir/PowerShell/PowerShellScriptBlocks-$comp_name.txt
@@ -1548,7 +1476,7 @@ function evtx_dump_json(){
     grep Windows.PowerShell.evtx.jsonl| \
     while read d;
     do
-      cat "$d" | \
+      cat "$d" 2>/dev/null | \
       jq  '.Event|select(.EventData.Data."#text"!=null)|.System.Computer,.System.TimeCreated."#attributes".SystemTime,.EventData.Data,.System.Channel' \
       >> $triage_dir/PowerShell/PowerShell-HostApplication-$comp_name.txt
     done
@@ -1648,7 +1576,7 @@ function Winevtx_parse(){
 
   #Microsoft-Windows-Bits-Client\%4Operational.evtx
   bits_client="$mount_dir/$winsysdir/$evtxdir/Microsoft-Windows-Bits-Client%4Operational.evtx" 
-  if [ "$bits_client" ]; then
+  if [ -f "$bits_client" ]; then
     make_green "Searching for BITS Transactions... (parse_evtx_BITS.py)"
     /envs/dfir/bin/python3 /opt/app/dfir-scripts/WinEventLogs/parse_evtx_BITS.py "$bits_client" |\
     >> $triage_dir/BITS/parse_evtx_BITS.py-$comp_name.csv;
@@ -1693,7 +1621,7 @@ function zircolite_evtx(){
     while read d;
     do
       evtx_jsonl=$(echo "$d" |awk -F'dump/' '{print $NF}')
-      /envs/dfir/bin/python3 $zpath/zircolite.py -j -e "$d" -r $zpath/rules/rules_windows_generic_full.json -c $zpath/config/fieldMappings.json --csv -o $triage_dir/Alert/Zircolite-"$evtx_jsonl".json -l $triage_dir/Alert/Zircolite-log-$comp_name.csv
+      /envs/dfir/bin/python3 $zpath/zircolite.py -j -e "$d" -r $zpath/rules/rules_windows_generic_full.json -c $zpath/config/fieldMappings.json --csv -o $triage_dir/Alert/Zircolite-"$evtx_jsonl"$comp_name.csv -l $triage_dir/Alert/Zircolite-log-$comp_name.csv
     done
   fi
 }
@@ -1701,7 +1629,7 @@ function zircolite_evtx(){
 
 #Extract MFT to body file and then to TLN and csv files
 function analyze_mft(){
-  if [ "ls $mount_dir/\$MFT 2>/dev/null" ]; then
+  if [ -f "$mount_dir/\$MFT" ]; then
     cd $mount_dir
     make_green "Timelining \$MFT Standby...(analyzeMFT.py)"
     [ -f "\$MFT" ] && \
@@ -1715,14 +1643,14 @@ function analyze_mft(){
     cat $timeline_dir/MFT-Timeline-$comp_name.TLN.txt | \
     while read d; 
     do 
-      grep -E -i \.xls$\|\.doc\|\.ps1$\|\.hta$\|\.tmp$\|\.rar$\|\.bat\|\.cmd$\|\.vba\|\.vbe$\|\.vbs$\|\.zip\|\z$\|\.arj$\|\.pub$  >> $tempfile;
+      grep -E -i \.xls$\|\.doc\|\.ps1$\|\.hta$\|\.tmp$\|\.rar$\|\.bat$\|\.cmd$\|\.vba$\|\.vbe$\|\.vbs$\|\.zip$\|\z$\|\.arj$\|\.pub$  >> $tempfile;
     done
   fi  
 }
 
 #Find Deleted Files
 function dump_mft(){
-  if [ "ls $mount_dir/\$MFT 2>/dev/null" ]; then
+  if [ -f "$mount_dir/\$MFT" ]; then
     make_green "Extracting MFT (MFT_Dump)"
     mft_dump \$MFT -o csv -f $triage_dir/MFT/MFT_Dump-$comp_name.csv
     #Find Unallocated files
@@ -1759,13 +1687,12 @@ function parse_usn(){
 
 #Consolidating TLN Output and consolidating timelines
 function consolidate_timeline(){
-    make_green "Consolidating TLN Files"
-    cat $tempfile | sort -rn |uniq \
-    >> $timeline_dir/Triage-Timeline-$comp_name.TLN;
-    cat $tempfile |awk -F'|' '{$1=strftime("%Y-%m-%d %H:%M:%S",$1)}{print $1","$2","$3","$4","$5}'|sort -rn | uniq| grep -va ",,,," \
-    >> $timeline_dir/Triage-Timeline-$comp_name.csv
-    cat $timeline_dir/Triage-Timeline-$comp_name.csv|grep -ia ",alert," \
-    >> $triage_dir/Alert/RegRipperAlerts-$comp_name.csv
+      cat $tempfile | sort -rn |uniq \
+      >> $timeline_dir/Triage-Timeline-$comp_name.TLN
+      cat $tempfile |awk -F'|' '{$1=strftime("%Y-%m-%d %H:%M:%S",$1)}{print $1","$2","$3","$4","$5}'|sort -rn | uniq| grep -va ",,,," \
+      >> $timeline_dir/Triage-Timeline-$comp_name.csv
+      cat $timeline_dir/Triage-Timeline-$comp_name.csv|grep -ia ",alert," \
+      >> $triage_dir/Alert/RegRipperAlerts-$comp_name.csv
 }
 
 #Get a copy of $MFT, WinEvents, Registry and Logs
@@ -1795,10 +1722,10 @@ function cp_artifacts(){
 function scan_for_lolbas(){
   if  [ "$(ls -A $triage_dir/WindowsEventLogs/evtx_dump/ 2>/dev/null)" ]; then
     make_green "Searching for executables identified as lolbas"
-    /envs/dfir/bin/python3 /usr/local/src/dfir-scripts/WinEventLogs/scanforlolbas.py -p  "$triage_dir/WindowsEventLogs/evtx_dump/" -l /usr/local/src/lolbas/lolbas.csv >> $triage_dir/lolbas/lolbas-in-evtx.csv
-    if [  -f "$triage_dir/lolbas/lolbas-in-evtx.csv" ] ; then
-      cat $triage_dir/lolbas/lolbas-in-evtx.csv |awk -F',' '{print ","$1","$2}'|sort |uniq -c |sort -rn |sed 's/ //g' >> $triage_dir/lolbas/lolbas-stats-$comp_name.csv
-      sed -i "1i lolbas_file,source,message" $triage_dir/lolbas/lolbas-in-evtx.csv
+    /envs/dfir/bin/python3 /usr/local/src/dfir-scripts/WinEventLogs/scanforlolbas.py -p  "$triage_dir/WindowsEventLogs/evtx_dump/" -l /usr/local/src/lolbas/lolbas.csv >> $triage_dir/lolbas/lolbas-in-evtx-$comp_name.csv
+    if [  -f "$triage_dir/lolbas/lolbas-in-evtx-$comp_name.csv" ] ; then
+      cat $triage_dir/lolbas/lolbas-in-evtx-$comp_name.csv |awk -F',' '{print ","$1","$2}'|sort |uniq -c |sort -rn |sed 's/ //g' >> $triage_dir/lolbas/lolbas-stats-$comp_name.csv
+      sed -i "1i lolbas_file,source,message" $triage_dir/lolbas/lolbas-in-evtx-$comp_name.csv
     fi
   fi
     
@@ -1900,5 +1827,7 @@ function scan_for_lolbas(){
 
 clear
 [ $(whoami) != "root" ] && make_red "dfir-scripts Requires Root!" && exit
+#[ $1 == "mount" ] && ermount
+#[ $1 == "-h" ] && help_menu
 show_menu
 exit 0
