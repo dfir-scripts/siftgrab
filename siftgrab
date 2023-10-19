@@ -1312,10 +1312,8 @@ function jobs_extract(){
     grep -i '\/tasks$'|sed 's|^\./||'|\
     while read d;
     do
-      echo "######## $d ########" \
-      >> $triage_dir/ScheduledTasks/jobsparser.py-$comp_name.txt
-      python2 /usr/local/bin/jobparser.py -d "$d" \
-      >> $triage_dir/ScheduledTasks/jobsparser.py-$comp_name.txt
+      echo "######## $d ########" >> $triage_dir/ScheduledTasks/jobsparser.py-$comp_name.txt
+      python2 /usr/local/bin/jobparser.py -d "$d" >> $triage_dir/ScheduledTasks/jobsparser.py-$comp_name.txt
     done
   fi
 }
@@ -1324,10 +1322,8 @@ function jobs_extract(){
 function recbin2tln(){
   if  [ "$(ls -A /$mount_dir/\$Recycle.Bin 2>/dev/null)" ]; then
     make_green "Parsing \$Recycle.Bin (recbin2tln)"
-    /usr/local/src/dfir-scripts/shellscripts/recbin2tln.sh . -c |sed "s/cle,,/cle,$comp_name|/" \
-    >> $triage_dir/Deleted_Files/Recycled-$comp_name.csv
-    /usr/local/src/dfir-scripts/shellscripts/recbin2tln.sh . |sed "s/cle||/cle|$comp_name|/" \
-    >> $tempfile
+    /usr/local/src/dfir-scripts/shellscripts/recbin2tln.sh . -c |sed "s/cle,,/cle,$comp_name|/" >> $triage_dir/Deleted_Files/Recycled-$comp_name.csv
+    /usr/local/src/dfir-scripts/shellscripts/recbin2tln.sh . |sed "s/cle||/cle|$comp_name|/" >> $tempfile
   fi
 }
 
@@ -1559,8 +1555,7 @@ function Winevtx_parse(){
   task_scheduler="$mount_dir/$winsysdir/$evtxdir/Microsoft-Windows-TaskScheduler%4Operational.evtx" 
   if [ -f "$task_scheduler" ]; then
     make_green "Searching for windows Event Logs for Scheduled Tasks (parse_evtx_tasks.py)"
-    /envs/dfir/bin/python3 /opt/app/dfir-scripts/WinEventLogs/parse_evtx_tasks.py  "$task_scheduler" \
-    >> $triage_dir/ScheduledTasks/parse_evtx_tasks.py-$comp_name.csv;
+    /envs/dfir/bin/python3 /opt/app/dfir-scripts/WinEventLogs/parse_evtx_tasks.py  "$task_scheduler" >> $triage_dir/ScheduledTasks/parse_evtx_tasks.py-$comp_name.csv;
     sleep 1
     cat $triage_dir/ScheduledTasks/parse_evtx_tasks.py-$comp_name.csv | \
     grep -E \,100\,\|\,102\,\|\,106\, | \
@@ -1578,8 +1573,7 @@ function Winevtx_parse(){
   bits_client="$mount_dir/$winsysdir/$evtxdir/Microsoft-Windows-Bits-Client%4Operational.evtx" 
   if [ -f "$bits_client" ]; then
     make_green "Searching for BITS Transactions... (parse_evtx_BITS.py)"
-    /envs/dfir/bin/python3 /opt/app/dfir-scripts/WinEventLogs/parse_evtx_BITS.py "$bits_client" |\
-    >> $triage_dir/BITS/parse_evtx_BITS.py-$comp_name.csv;
+    /envs/dfir/bin/python3 /opt/app/dfir-scripts/WinEventLogs/parse_evtx_BITS.py "$bits_client" >> $triage_dir/BITS/parse_evtx_BITS.py-$comp_name.csv
     sleep 1
     cat $triage_dir/BITS/parse_evtx_BITS.py-$comp_name.csv |\
     while read d;
