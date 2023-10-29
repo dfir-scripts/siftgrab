@@ -496,7 +496,7 @@ triage_dirs=("ActivitiesCache" "ADS" "Alert" "Amcache" "BITS" "Browser_Activity"
 "lolbas" "MFT" "PCA"  "PowerShell" "Prefetch" "RDP" "Registry/Regripper/Account_Info" "Registry/Regripper/File_Access" \
 "Registry/Regripper/Program_Execution" "Registry/Regripper/Run_Keys" "Registry/Regripper/CLSID" "Registry/Regripper/Settings" \
 "Registry/Regripper/System_Info/Network" "Registry/Regripper/System_Info/Software" "USB" "Registry/Regripper/USERS" \
-"Registry/Regripper/User_Searches" "Registry/yarp-registryflush.py" "Registry/Impacket" "ScheduledTasks" "Services" "SRUM" \
+"Registry/Regripper/User_Searches" "Registry/yarp-registryflush.py" "Registry/Impacket" "ScheduledTasks" "Services" "SRUM" "Summary" \
 "Timeline" "USNJRNL" "UserAccessLog" "WindowsEventLogs" "WMI")
     for dir_names in "${triage_dirs[@]}";
     do
@@ -889,7 +889,7 @@ function jumplink_parser(){
     sleep 1
 
     /usr/local/src/dfir-scripts/WinEventLogs/jq/JLParser-stats.sh \
-    $triage_dir/LNK/JumpList_Lnk_Parser-$comp_name.json >> $triage_dir/LNK/JL-stats-$comp_name.txt 
+    $triage_dir/LNK/JumpList_Lnk_Parser-$comp_name.json >> $triage_dir/Summary/JL-stats-$comp_name.txt 
   fi
 }
 
@@ -960,9 +960,9 @@ function rip_software(){
     rip.pl -r $software_hive -p exefile \
     >> $triage_dir/Registry/Regripper/Settings/Exefile-$comp_name.txt
     rip.pl -r $software_hive -p tasks \
-    >> $triage_dir/ScheduledTasks/Regripper-Tasks-$comp_name.txt
+    >> $triage_dir/ScheduledTasks/Regripper-Tasks-Subkeys-$comp_name.txt
     rip.pl -r $software_hive -p taskcache \
-    >> $triage_dir/ScheduledTasks/Regripper-TaskCache-$comp_name.txt
+    >> $triage_dir/ScheduledTasks/Regripper-TaskCache-Root-Keys-$comp_name.txt
     rip.pl -r $software_hive -p wbem \
     >> $triage_dir/WMI/Regripper-wbem-$comp_name.txt  
     rip.pl -r $software_hive -p uacbypass \
@@ -1189,7 +1189,7 @@ function rip_ntuser_usrclass(){
       echo "######  "$user_name"  ######"  \
       >> "$triage_dir/Registry/Regripper/File_Access/Regripper-RLO-Check-$comp_name.txt"
       rip.pl -r "$ntuser_path" -p rlo |grep -va "^$" \
-      >> "$triage_dir/Registry/Regripper/File_Access/Regripper-RLO-Check-$comp_name.txt"
+      >> "$triage_dir/Alert/Regripper-RLO-Check-$comp_name.txt"
     done
   fi
 }
@@ -1265,8 +1265,7 @@ function prefetch_extract(){
   if  [ "$(ls -A /$mount_dir/$windir/Prefetch 2>/dev/null)" ]; then
     rm /tmp/prc.txt 2>/dev/null
     make_green "Searching for Prefetch Files (prefetchruncounts.py)"
-    /envs/dfir/bin/python3 /opt/app/dfir-scripts/python/prefetchruncounts.py "$prefetch" \
-    >> $triage_dir/Prefetch/prefetchruncounts-$comp_name.csv
+    /envs/dfir/bin/python3 /opt/app/dfir-scripts/python/prefetchruncounts.py "$prefetch" >> $triage_dir/Prefetch/prefetchruncounts-$comp_name.csv
     /envs/dfir/bin/python3 /opt/app/dfir-scripts/python/prefetchruncounts.py "$prefetch" -t >> /tmp/prc.txt
     sleep 1
     [ -f "/tmp/prc.txt" ] && cat /tmp/prc.txt |while read d;
@@ -1283,9 +1282,9 @@ function prefetch_extract(){
 }
 
 #Parse OBJECTS.DATA file
-objects_data_extract(){ 
+objects_data_extract(){
+  objects_data=$(find $winsysdir/wbem/Repository/| grep -i -m1 '\/objects.data$')
   if [ -f "$objects_data" ]; then
-    objects_data=$(find $winsysdir/wbem/Repository/| grep -i -m1 '\/objects.data$')
     cd $mount_dir
     make_green "Parsing OBJECTS.DATA file (PyWMIPersistenceFinder.py, CCM-RecentApps.py)"
     sleep 1
@@ -1294,8 +1293,7 @@ objects_data_extract(){
     while read d;
     do
       python2 /usr/local/bin/CCM_RUA_Finder.py -i "$d" -o $triage_dir/WMI/CCM-RUA_Finder-$comp_name.csv
-      python2 /usr/local/bin/PyWMIPersistenceFinder.py "$d" \
-      >> $triage_dir/WMI/pyWMI-Persistence-Finder-$comp_name.csv
+      python2 /usr/local/bin/PyWMIPersistenceFinder.py "$d" >> $triage_dir/WMI/pyWMI-Persistence-Finder-$comp_name.csv
     done
   fi
 }
@@ -1398,13 +1396,13 @@ extract_winactivities(){
     while read f;
     do
       profile_name=$(echo "$f"|awk -F'Timeline.sql-' '{print $NF}')
-      echo -e "******  $profile_name  ******\n Count File"  >> $triage_dir/ActivitiesCache/ActivitiesCache-stats.txt
+      echo -e "******  $profile_name  ******\n Count File"  >> $triage_dir/Summary/ActivitiesCache-stats.txt
        cat "$f" 2>/dev/null| \
        awk -F'|' '{print $3}'|grep  exe|awk -F'\' '{print $NF}'|sort |uniq -c|sort -rn \
-       >> $triage_dir/ActivitiesCache/ActivitiesCache-stats.txt
+       >> $triage_dir/Summary/ActivitiesCache-stats.txt
        cat "$f" 2>/dev/null| \
        awk -F'|' '{print $3}'|grep -v exe|awk -F'\' '{print $NF}'|sort |uniq -c|sort -rn \
-       >> $triage_dir/ActivitiesCache/ActivitiesCache-stats.txt
+       >> $triage_dir/Summary/ActivitiesCache-stats.txt
     done
   fi
 }
@@ -1479,56 +1477,49 @@ function evtx_dump_json(){
 
     # Get IPv4 Addresses in EVTX files
     make_green "Grepping for IP v4 Addresses in EVTX files"
+    echo "EVENT_LOG,IP_ADDRESS,LOCATION">>$triage_dir/Summary/IPv4-Addresses-in-evtx-$comp_name.csv
     find $triage_dir/WindowsEventLogs/evtx_dump/ -type f | \
     while read d;
     do
-      echo $d >> $triage_dir/WindowsEventLogs/IPv4-Addresses-in-evtx-$comp_name.txt
+      evtx_log=$(basename "$d")
       grep -Eoa "\b(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b" """$d"""| \
       sort -u | grep -Ev ^0\|0\.0\.0\|^127\|^224\|^239 2>/dev/null |while read line;
       do
-        a=$(geoiplookup $line 2>/dev/null|awk -F':' '{print $2}'|grep -vi "IP Address not found")
-        echo $line $a  \
-        >> $triage_dir/WindowsEventLogs/IPv4-Addresses-in-evtx-$comp_name.txt
+        a=$(geoiplookup $line 2>/dev/null|awk -F',' '{print $2}')
+        [ "$a" == '' ] && a='NON_INTERNET'
+        echo $evtx_log","$line","$a >> $triage_dir/Summary/IPv4-Addresses-in-evtx-$comp_name.csv
       done
-      echo "*********************************************************" \
-      >> $triage_dir/WindowsEventLogs/IPv4-Addresses-in-evtx-$comp_name.txt
     done
 
-    echo "EXTERNAL IP ADDRESS SUMMARY" \
-    >> $triage_dir/WindowsEventLogs/IPv4-Addresses-in-evtx-$comp_name.txt
-    cat  $triage_dir/WindowsEventLogs/IPv4-Addresses-in-evtx-$comp_name.txt | \
-    awk -F',' '{print $2}'| grep  -v '^$'|sort |uniq -c|sort -rn \
-    >> $triage_dir/WindowsEventLogs/IPv4-Addresses-in-evtx-$comp_name.txt
-
-    # Get Statistics from Security.evtx
+    # Get Summary from Security.evtx
     find $triage_dir/WindowsEventLogs/evtx_dump/ -type f 2>/dev/null | \
     grep -i \/Security.evtx.jsonl| \
     while read d;
     do
-      echo "SECURITY.EVTX EVENT COUNT" >> $triage_dir/WindowsEventLogs/Security.evtx-stats-$comp_name.txt
+      echo "SECURITY.EVTX EVENT COUNT" >> $triage_dir/Summary/Security.evtx-stats-$comp_name.txt
       /opt/app/dfir-scripts/WinEventLogs/jq/security.evtx.count.sh "$d" \
-      >> $triage_dir/WindowsEventLogs/Security.evtx-stats-$comp_name.txt
+      >> $triage_dir/Summary/Security.evtx-stats-$comp_name.txt
       echo "*********************************************************
-      ">> $triage_dir/WindowsEventLogs/Security.evtx-stats-$comp_name.txt
+      ">> $triage_dir/Summary/Security.evtx-stats-$comp_name.txt
 
-      echo "SECURITY.EVTX LOGIN TYPES" >> $triage_dir/WindowsEventLogs/Security.evtx-stats-$comp_name.txt
+      echo "SECURITY.EVTX LOGIN TYPES" >> $triage_dir/Summary/Security.evtx-stats-$comp_name.txt
       /opt/app/dfir-scripts/WinEventLogs/jq/logintypescount.sh "$d" \
-      >> $triage_dir/WindowsEventLogs/Security.evtx-stats-$comp_name.txt
+      >> $triage_dir/Summary/Security.evtx-stats-$comp_name.txt
       echo "*********************************************************
-      ">> $triage_dir/WindowsEventLogs/Security.evtx-stats-$comp_name.txt
+      ">> $triage_dir/Summary/Security.evtx-stats-$comp_name.txt
 
-      echo "SECURITY.EVTX NEW PROCESSES" >> $triage_dir/WindowsEventLogs/Security.evtx-stats-$comp_name.txt
+      echo "SECURITY.EVTX NEW PROCESSES" >> $triage_dir/Summary/Security.evtx-stats-$comp_name.txt
       /opt/app/dfir-scripts/WinEventLogs/jq/newprocesscount.sh "$d" \
-      >> $triage_dir/WindowsEventLogs/Security.evtx-stats-$comp_name.txt
+      >> $triage_dir/Summary/Security.evtx-stats-$comp_name.txt
 
-      echo "SECURITY.EVTX FAILED LOGINS" >> $triage_dir/WindowsEventLogs/failed-logins-$comp_name.txt
+      echo "SECURITY.EVTX FAILED LOGINS" >> $triage_dir/Summary/failed-logins-$comp_name.txt
       /opt/app/dfir-scripts/WinEventLogs/jq/failed_logins.sh  "$d" \
-      >> $triage_dir/WindowsEventLogs/failed-logins-$comp_name.txt
+      >> $triage_dir/Summary/failed-logins-$comp_name.txt
 
       echo "SECURITY.EVTX EXPLICIT LOGINS EID4648" \
-      >> $triage_dir/WindowsEventLogs/explicit-logins-$comp_name.txt
+      >> $triage_dir/Summary/explicit-logins-$comp_name.txt
       /opt/app/dfir-scripts/WinEventLogs/jq/explicit_logins.sh  "$d" \
-      >> $triage_dir/WindowsEventLogs/explicit-logins-$comp_name.txt
+      >> $triage_dir/Summary/explicit-logins-$comp_name.txt
     done
 
     # Get Information from Task Scheduler
@@ -1540,9 +1531,9 @@ function evtx_dump_json(){
         echo "Scheduled Task Event Summary" \
         >>  $triage_dir/SheduledTasks/task-scheduler-info-$comp_name.txt
         /opt/app/dfir-scripts/WinEventLogs/jq/task-scheduler-summary.sh "$d" \
-        >> $triage_dir/ScheduledTasks/task-scheduler-info-$comp_name.txt
+        >> $triage_dir/Summary/task-scheduler-info-$comp_name.txt
         echo "*********************************************************"\
-        >>  $triage_dir/ScheduledTasks/task-scheduler-info-$comp_name.txt
+        >>  $triage_dir/Summary/task-scheduler-info-$comp_name.txt
       done
     fi
   fi
@@ -1592,7 +1583,7 @@ function Winevtx_parse(){
     /envs/dfir/bin/python3 /opt/app/dfir-scripts/WinEventLogs/parse_evtx_RDP.py $mount_dir/$winsysdir/$evtxdir \
     >> $triage_dir/RDP/parse_evtx_RDP.py-$comp_name.csv;
     /usr/local/src/dfir-scripts/WinEventLogs/RDP_Diagram.sh -f $triage_dir/RDP/parse_evtx_RDP.py-$comp_name.csv \
-    -o $triage_dir/RDP/RDP_Diagram.sh-$comp_name.png
+    -o $triage_dir/Summary/RDP_Diagram.sh-$comp_name.png
     cat $triage_dir/RDP/parse_evtx_RDP.py-$comp_name.csv|\
     grep -E  \,21\,\|\,23\,\|\,24\,\|\,25\,\|\,1149\,\|\,98\,\|\,131\,\|\,140\,\|\,1102\|\,1105\,\|\,1029 |\
     while read d;
@@ -1615,8 +1606,12 @@ function zircolite_evtx(){
     while read d;
     do
       evtx_jsonl=$(echo "$d" |awk -F'dump/' '{print $NF}')
-      /envs/dfir/bin/python3 $zpath/zircolite.py -j -e "$d" -r $zpath/rules/rules_windows_generic_full.json -c $zpath/config/fieldMappings.json --csv -o $triage_dir/Alert/Zircolite-"$evtx_jsonl"$comp_name.csv -l $triage_dir/Alert/Zircolite-log-$comp_name.csv
+      /envs/dfir/bin/python3 $zpath/zircolite.py -j -e "$d" -r $zpath/rules/rules_windows_generic_full.json -c $zpath/config/fieldMappings.json --json -o $triage_dir/Alert/Zircolite-"$evtx_jsonl"$comp_name.json -l $triage_dir/Alert/Zircolite-log-$comp_name.txt
     done
+    sleep .5
+    header="COUNT,LEVEL,TITLE,DESCRIPTION"
+    result=$(cat $triage_dir/Alert/*.json 2>/dev/null |jq -r '.[]|select(.title!="")|"\(.count),\(.rule_level),\(.title),\(.description)"'|grep -v null,null,null|sort -rn)
+    [ "$result" != "" ] && printf "%s\n%s"  ${header} "${result}"|column -t -s "," >> $triage_dir/Summary/Zircolite-Summary-"$comp_name".txt
   fi
 }
 
@@ -1650,14 +1645,14 @@ function dump_mft(){
     #Find Unallocated files
     make_green "Locating Unallocated files"
     cat $triage_dir/MFT/MFT_Dump-$comp_name.csv| \
-    awk -F',' '{if($12 =="true" && $11=="false") print substr($20,1,19)",DELETED,,,FILE Last Write: SI="substr($16,1,19)";"$22;
-    else if($12 =="true" && $11=="true") print substr($20,1,19)",DELETED,,,DIRECTORY Last Write: SI="substr($16,1,19)";"$22;}'| \
-    sed 's/T/ /1' >> $triage_dir/Deleted_Files/MFT-UNALLOCATED-$comp_name.csv
+    awk -F',' '{if($12 =="true" && $11=="false") print substr($20,1,19)",UNALLOCATED,,,FILE Last Write: SI="substr($16,1,19)";"$22;
+    else if($12 =="true" && $11=="true") print substr($20,1,19)",UNALLOCATED,,,DIRECTORY Last Write: SI="substr($16,1,19)";"$22;}'| \
+    sed 's/T/ /1' |sed "s/UNALLOCATED,,,/UNALLOCATED,${comp_name},,/" >> $triage_dir/Deleted_Files/MFT-UNALLOCATED-$comp_name.csv
     #find ADS
     make_green "Locating Files with Alternate Data Streams (ADS)"
     cat $triage_dir/MFT/MFT_Dump-$comp_name.csv| \
-    awk -F',' '{if($13 =="true") print substr($20,1,19)",ADS,$comp_name,,FILE Last Write: SI="substr($16,1,19)";"$22;}' \
-    | sed 's/T/ /1' |grep -P ^[0-9]{4} >> $triage_dir/ADS/AlternateDataStreams-$comp_name.csv
+    awk -F',' '{if($13 =="true") print substr($20,1,19)",ADS,,,FILE Last Write: SI="substr($16,1,19)";"$22;}' \
+    | sed 's/T/ /1' |sed "s/,,,/,${comp_name},,/" |grep -P ^[0-9]{4} >> $triage_dir/ADS/AlternateDataStreams-$comp_name.csv
   fi  
 }
 
@@ -1683,10 +1678,10 @@ function parse_usn(){
 function consolidate_timeline(){
       cat $tempfile | sort -rn |uniq \
       >> $timeline_dir/Triage-Timeline-$comp_name.TLN
-      cat $tempfile |awk -F'|' '{$1=strftime("%Y-%m-%d %H:%M:%S",$1)}{print $1","$2","$3","$4","$5}'|sort -rn | uniq| grep -va ",,,," \
-      >> $timeline_dir/Triage-Timeline-$comp_name.csv
-      cat $timeline_dir/Triage-Timeline-$comp_name.csv|grep -ia ",alert," \
-      >> $triage_dir/Alert/RegRipperAlerts-$comp_name.csv
+      cat $tempfile |awk -F'|' '{$1=strftime("%Y-%m-%d %H:%M:%S",$1)}{print $1","$2","$3","$4","$5}'|sort -rn | uniq| grep -va ",,,," >> $timeline_dir/Triage-Timeline-$comp_name.csv
+      cat $timeline_dir/Triage-Timeline-$comp_name.csv|grep -ia ",alert," >> $triage_dir/Alert/RegRipperAlerts-$comp_name.csv
+      cat $triage_dir/ADS/AlternateDataStreams-$comp_name.csv >> $timeline_dir/Triage-Timeline-$comp_name.csv
+      cat $triage_dir/Deleted_Files/MFT-UNALLOCATED-$comp_name.csv >> $timeline_dir/Triage-Timeline-$comp_name.csv
 }
 
 #Get a copy of $MFT, WinEvents, Registry and Logs
@@ -1718,7 +1713,7 @@ function scan_for_lolbas(){
     make_green "Searching for executables identified as lolbas"
     /envs/dfir/bin/python3 /usr/local/src/dfir-scripts/WinEventLogs/scanforlolbas.py -p  "$triage_dir/WindowsEventLogs/evtx_dump/" -l /usr/local/src/lolbas/lolbas.csv >> $triage_dir/lolbas/lolbas-in-evtx-$comp_name.csv
     if [  -f "$triage_dir/lolbas/lolbas-in-evtx-$comp_name.csv" ] ; then
-      cat $triage_dir/lolbas/lolbas-in-evtx-$comp_name.csv |awk -F',' '{print ","$1","$2}'|sort |uniq -c |sort -rn |sed 's/ //g' >> $triage_dir/lolbas/lolbas-stats-$comp_name.csv
+      cat $triage_dir/lolbas/lolbas-in-evtx-$comp_name.csv |awk -F',' '{print ","$1","$2}'|sort |uniq -c |sort -rn |sed 's/ //g' >> $triage_dir/Summary/lolbas-stats-$comp_name.csv
       sed -i "1i lolbas_file,source,message" $triage_dir/lolbas/lolbas-in-evtx-$comp_name.csv
     fi
   fi
@@ -1769,7 +1764,7 @@ function scan_for_lolbas(){
 
   #insert header
   if  [ -f "$triage_dir/lolbas/lolbas-$comp_name.csv" ] ; then
-    cat $triage_dir/lolbas/lolbas-$comp_name.csv |awk -F',' '{print ","$1","$2}'|sort |uniq -c |sort -rn |sed 's/ //g' >> $triage_dir/lolbas/lolbas-stats-$comp_name.csv
+    cat $triage_dir/lolbas/lolbas-$comp_name.csv |awk -F',' '{print ","$1","$2}'|sort |uniq -c |sort -rn |sed 's/ //g' >> $triage_dir/Summary/lolbas-stats-$comp_name.csv
     sed -i "1i lolbas_file,source,message" $triage_dir/lolbas/lolbas-$comp_name.csv
   fi
 
@@ -1786,12 +1781,12 @@ function scan_for_lolbas(){
     done
     sleep .5
     if [  -f "$triage_dir/lolbas/lolbas-srum-$comp_name.csv" ] ; then
-      cat $triage_dir/lolbas/lolbas-srum-$comp_name.csv |awk -F',' '{print ","$1","$2}'|sort |uniq -c |sort -rn |sed 's/ //g'  >> $triage_dir/lolbas/lolbas-stats-$comp_name.csv
+      cat $triage_dir/lolbas/lolbas-srum-$comp_name.csv |awk -F',' '{print ","$1","$2}'|sort |uniq -c |sort -rn |sed 's/ //g'  >> $triage_dir/Summary/lolbas-stats-$comp_name.csv
       sed -i "1i lolbas_file,source,message" $triage_dir/lolbas/lolbas-srum-$comp_name.csv
     fi
   fi
-  if [  -f "$triage_dir/lolbas/lolbas-stats-$comp_name.csv" ] ; then
-    sed -i "1i count,lolbas_file,source" $triage_dir/lolbas/lolbas-stats-$comp_name.csv
+  if [  -f "$triage_dir/Summary/lolbas-stats-$comp_name.csv" ] ; then
+    sed -i "1i count,lolbas_file,source" $triage_dir/Summary/lolbas-stats-$comp_name.csv
   fi
   
     
