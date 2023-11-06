@@ -884,7 +884,7 @@ function jumplink_parser(){
   if [ -f "$lnk_exists" ]; then
     make_green "Running JLParse.py extracting LNKS and Jumplists to json"
     /envs/dfir/bin/python3 /opt/app/JumpList_Lnk_Parser/JLParser.py -p -a \
-    /opt/app/JumpList_Lnk_Parser/JLParser_AppID.csv -d $user_dir -o \
+    /opt/app/EricZimmerman/AppIDs.csv -d $user_dir -o \
     $triage_dir/LNK/JumpList_Lnk_Parser-$comp_name.json
     sleep 1
 
@@ -923,8 +923,8 @@ function rip_software(){
     >> $triage_dir/Registry/Regripper/Account_Info/User-Profiles-$comp_name.txt;
     rip.pl -r $software_hive -p pslogging 2>/dev/null \
     >> $triage_dir/Registry/Regripper/Settings/Powershell-logging-$comp_name.txt;
-    rip.pl -r $software_hive -p clsid 2>/dev/null \
-    >> $triage_dir/Registry/Regripper/CLSID/Clsid-Registered-Classes-$comp_name.txt;
+    rip.pl -r $software_hive -p clsid_tln 2>/dev/null |\
+    awk -F'|' '{$1=strftime("%Y-%m-%d %H:%M:%S",$1)}{print $1",task_root,"$3","$4","$5}' >> $triage_dir/Registry/Regripper/CLSID/Clsid-Registered-Classes-$comp_name.txt;
     rip.pl -r $software_hive -p cmd_shell 2>/dev/null \
     >> $triage_dir/Registry/Regripper/Settings/Cmd_Shell-$comp_name.txt;
     rip.pl -r $software_hive -p portdev \
@@ -959,10 +959,10 @@ function rip_software(){
     >> $triage_dir/Registry/Regripper/CLSID/Scriptleturl-$comp_name.txt
     rip.pl -r $software_hive -p exefile \
     >> $triage_dir/Registry/Regripper/Settings/Exefile-$comp_name.txt
-    rip.pl -r $software_hive -p tasks \
-    >> $triage_dir/ScheduledTasks/Regripper-Tasks-Subkeys-$comp_name.txt
-    rip.pl -r $software_hive -p taskcache \
-    >> $triage_dir/ScheduledTasks/Regripper-TaskCache-Root-Keys-$comp_name.txt
+    rip.pl -r $software_hive -p tasks_tln | \
+    awk -F'|' '{$1=strftime("%Y-%m-%d %H:%M:%S",$1)}{print $1",task_root,"$3","$4","$5}' >> $triage_dir/ScheduledTasks/Regripper-Task-Keys-$comp_name.txt
+    rip.pl -r $software_hive -p taskcache_tln | \
+    awk -F'|' '{$1=strftime("%Y-%m-%d %H:%M:%S",$1)}{print $1",taskcache,"$3","$4","$5}' >> $triage_dir/ScheduledTasks/Regripper-Task-Keys-$comp_name.txt
     rip.pl -r $software_hive -p wbem \
     >> $triage_dir/WMI/Regripper-wbem-$comp_name.txt  
     rip.pl -r $software_hive -p uacbypass \
@@ -1353,6 +1353,10 @@ function srum_dump(){
     --XLSX_OUTFILE $triage_dir/SRUM/srum_dump-$comp_name.xlsx -r $mount_dir/$winsysdir/$regdir/SOFTWARE \
     -q -t /opt/app/srum-dump/SRUM_TEMPLATE2.xlsx
   fi
+  if [ -f "$triage_dir/SRUM/srum_dump-$comp_name.xlsx" ]; then
+    cd "$triage_dir/SRUM/"
+    sudo ssconvert -S "srum_dump-$comp_name.xlsx" srum_dump-$comp_name.csv 2>/dev/null
+  fi
 }
 
 function kstrike_current.mdb(){
@@ -1396,13 +1400,13 @@ extract_winactivities(){
     while read f;
     do
       profile_name=$(echo "$f"|awk -F'Timeline.sql-' '{print $NF}')
-      echo -e "******  $profile_name  ******\n Count File"  >> $triage_dir/Summary/ActivitiesCache-stats.txt
+      echo -e "******  $profile_name  ******\n Count File"  >> $triage_dir/Summary/ActivitiesCache-stats-$comp_name.txt
        cat "$f" 2>/dev/null| \
        awk -F'|' '{print $3}'|grep  exe|awk -F'\' '{print $NF}'|sort |uniq -c|sort -rn \
-       >> $triage_dir/Summary/ActivitiesCache-stats.txt
+       >> $triage_dir/Summary/ActivitiesCache-stats-$comp_name.txt
        cat "$f" 2>/dev/null| \
        awk -F'|' '{print $3}'|grep -v exe|awk -F'\' '{print $NF}'|sort |uniq -c|sort -rn \
-       >> $triage_dir/Summary/ActivitiesCache-stats.txt
+       >> $triage_dir/Summary/ActivitiesCache-stats-$comp_name.txt
     done
   fi
 }
@@ -1487,7 +1491,7 @@ function evtx_dump_json(){
       do
         a=$(geoiplookup $line 2>/dev/null|awk -F',' '{print $2}')
         [ "$a" == '' ] && a='NON_INTERNET'
-        echo $evtx_log","$line","$a >> $triage_dir/Summary/IPv4-Addresses-in-evtx-$comp_name.csv
+        echo $line","$a","$evtx_log >> $triage_dir/Summary/IPv4-Addresses-in-evtx-$comp_name.csv
       done
     done
 
@@ -1531,9 +1535,9 @@ function evtx_dump_json(){
         echo "Scheduled Task Event Summary" \
         >>  $triage_dir/SheduledTasks/task-scheduler-info-$comp_name.txt
         /opt/app/dfir-scripts/WinEventLogs/jq/task-scheduler-summary.sh "$d" \
-        >> $triage_dir/Summary/task-scheduler-info-$comp_name.txt
+        >> $triage_dir/Summary/task-scheduler-stats-$comp_name.txt
         echo "*********************************************************"\
-        >>  $triage_dir/Summary/task-scheduler-info-$comp_name.txt
+        >>  $triage_dir/Summary/task-scheduler-stats-$comp_name.txt
       done
     fi
   fi
@@ -1576,6 +1580,14 @@ function Winevtx_parse(){
       [ "$timestamp" != "" ] && echo $tlntime"|BITS|"$comp_name"||"$evtxinfo >> $tempfile
     done
   fi
+  if [ -f $triage_dir/BITS/parse_evtx_BITS.py-$comp_name.csv ]; then
+  echo "WINDOWS BITS EVENT SUMMARY
+
+COUNT,EVENTID,DESCRIPTION,COMPUTER,PROCESSID,USER,JOBTITLE,URL,BYTES_IN,BYTES_OUT,OWNER" >> $triage_dir/Summary/BITS-stats-$comp_name.csv
+cat $triage_dir/BITS/parse_evtx_BITS.py-$comp_name.csv |grep ^[1-9] | \
+   awk -F',' '{print $2","$3","$4","$5","$8","$9","$10","$14","$15","$17}' |sort |uniq -c |sort -rn >> $triage_dir/Summary/BITS-stats-$comp_name.csv
+  fi
+
 
   #Find RDP Connections
   if [ "$evtxdir" != '' ]; then
@@ -1595,6 +1607,13 @@ function Winevtx_parse(){
         [ "$timestamp" != "" ] && echo $tlntime"|RDP|"$comp_name"||"$evtxinfo >> $tempfile
     done
   fi
+  if [ -f $triage_dir/RDP/parse_evtx_RDP.py-$comp_name.csv ]; then
+  echo "WINDOWS RDP CONNECTION SUMMARY
+
+COUNT,EVENTID,DESCRIPTION,COMPUTER,DOMAIN,USER,HOST/IP_ADDRESS,SESSION,DIRECTION" >> $triage_dir/Summary/RDP-stats-"$comp_name".txt
+  cat $triage_dir/RDP/parse_evtx_RDP.py-$comp_name.csv | grep [1-9] |awk -F',' '{print ","$5","$6","$7","$8","$9","$10","$11}' |\
+  sort  |uniq -c |sort -rn >> $triage_dir/Summary/RDP-stats-"$comp_name".txt
+  fi
 }
 
 function zircolite_evtx(){
@@ -1611,7 +1630,7 @@ function zircolite_evtx(){
     sleep .5
     header="COUNT,LEVEL,TITLE,DESCRIPTION"
     result=$(cat $triage_dir/Alert/*.json 2>/dev/null |jq -r '.[]|select(.title!="")|"\(.count),\(.rule_level),\(.title),\(.description)"'|grep -v null,null,null|sort -rn)
-    [ "$result" != "" ] && printf "%s\n%s"  ${header} "${result}"|column -t -s "," >> $triage_dir/Summary/Zircolite-Summary-"$comp_name".txt
+    [ "$result" != "" ] && printf "%s\n%s"  ${header} "${result}"|column -t -s "," >> $triage_dir/Summary/Zircolite-stats-"$comp_name".txt
   fi
 }
 
@@ -1769,17 +1788,17 @@ function scan_for_lolbas(){
   fi
 
     #***** Lolbas in SRUM Dump *****************************
+    
   if [  -f "$triage_dir/SRUM/srum_dump-$comp_name.xlsx" ]; then
     make_green "Searching for executables identified as lolbas in srum_dump-$comp_name.xlsx"
-    cd "$triage_dir/SRUM/"
-    sudo ssconvert -S "srum_dump-$comp_name.xlsx" srum_dump-$comp_name.csv 2>/dev/null
+    cd $triage_dir/SRUM
     ls *csv* |\
     while read d;
     do
       /envs/dfir/bin/python /usr/local/src/dfir-scripts/WinEventLogs/scanforlolbas.py -p \
       $triage_dir/SRUM/ -l /usr/local/src/lolbas/lolbas.csv >> $triage_dir/lolbas/lolbas-srum-$comp_name.csv
-    done
-    sleep .5
+    done    
+
     if [  -f "$triage_dir/lolbas/lolbas-srum-$comp_name.csv" ] ; then
       cat $triage_dir/lolbas/lolbas-srum-$comp_name.csv |awk -F',' '{print ","$1","$2}'|sort |uniq -c |sort -rn |sed 's/ //g'  >> $triage_dir/Summary/lolbas-stats-$comp_name.csv
       sed -i "1i lolbas_file,source,message" $triage_dir/lolbas/lolbas-srum-$comp_name.csv
