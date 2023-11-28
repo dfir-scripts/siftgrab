@@ -885,8 +885,7 @@ function jumplink_parser(){
   if [ -f "$lnk_exists" ]; then
     make_green "Running JLParse.py extracting LNKS and Jumplists to json"
     /envs/dfir/bin/python3 /opt/app/JumpList_Lnk_Parser/JLParser.py -p -a \
-    /opt/app/EricZimmerman/AppIDs.csv -d $user_dir -o
-    $triage_dir/LNK/JumpList_Lnk_Parser-$comp_name.json
+    /opt/app/EricZimmerman/AppIDs.csv -d $user_dir -o $triage_dir/LNK/JumpList_Lnk_Parser-$comp_name.json
     sleep 1
 
     /usr/local/src/dfir-scripts/WinEventLogs/jq/JLParser-stats.sh \
