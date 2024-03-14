@@ -1,7 +1,7 @@
 # siftgrab
 Siftgrab is a consolidation of open source tools and custom scripts. 
 It is a basic DFIR triage tool for examining Windows system disk images in a 
-Linux evnironment.  Tested on Ubuntu 20.04, Kali 2022.1, Windows WSL2 and SANS SiFT.  
+Linux evnironment.  Tested on Ubuntu 22.04, Kali 2023.3, Windows WSL2.  
 
 <li> To install all the dependencies and extra tools, download and run the forensics tools install script:
 
