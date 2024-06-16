@@ -2,7 +2,7 @@
 
 <div align="left">
  <p>
-    <img alt="Siftgrab Overview" src="siftgrab.gif" width="50%">
+    <img alt="Siftgrab Overview" src="images/Siftgrab-main.gif" width="50%">
  </p>
 </div>
 https://github.com/dfir-scripts<br>
@@ -42,6 +42,12 @@ NOTE: Use -v parameter to provide access to mount points and output folders outs
 
 
 ### Siftgrab Menu:<br>
+<div align="left">
+ <p>
+    <img alt="Siftgrab Overview" src="images/siftgrab.png" width="50%">
+ </p>
+</div>
+
   To access the siftgrab menu simply type:<br> 
   ```
 sudo siftgrab
@@ -107,6 +113,14 @@ sudo siftgrab
        -View the readme file<br>
 
 ### Results<br>
+<div align="left">
+ <p>
+    <img alt="Siftgrab Overview" src="images/siftgrab-results.gif" width="50%">
+ </p>
+</div>
+https://github.com/dfir-scripts<br>
+https://hub.docker.com/u/dfirscripts
+
 Triage Output:
 By default output data goes to the /cases directory but can be sent to a network share 
 Output is sorted by artifact category:
