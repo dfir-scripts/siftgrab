@@ -11,17 +11,16 @@ https://hub.docker.com/u/dfirscripts
 Siftgrab is an automation script written in Bash that simplifies the process of parsing Windows forensic artifacts from Linux. It is wrapper for various open-source forensic tools and facilitates the mounting and extraction of forensic data from Windows systems.<br><br>
 Siftgrab runs on Ubuntu and other Debian-based systems; alternatively it can be installed as a [Docker Image]( https://hub.docker.com/u/dfirscripts).
 
-Siftgrab is for learning forensics, CTFs or as a triage tool.<br>
-It provides easy access to different open source Linux forensic tools without having to download, install, or remember different command line syntax.
+It provides easy access to different open source Linux forensic tools and custom scripts. It runs without having to separately locate download, install, or remember different command line options.
 
 It can also be used at scale to process multiple data collections at once from tools like Kape and CyLR.
-
-I use it every day in my forensics lab and it is frequently updated.
 
 ### Installation Option 1:
 **Install script**<br>
 To install all tools and dependencies, run the following commands:
-(Recommended installation is using fresh VM installation of Ubuntu, Kali or WSL Ubuntu.)
+(Recommended installation is using fresh VM installation of Ubuntu, Kali or WSL Ubuntu.)<br>
+<b>Note:</b> WSL 2 has file system performance issues which may cause it to run [slower](https://github.com/microsoft/WSL/issues/9430) <br>
+Consider WSL 1 or VM/Docker installs if speed is an issue. 
 
 INSTALLATION:
 Run the following commands from the terminal.
@@ -79,7 +78,7 @@ sudo siftgrab
        ********************************************************
 
    <b>2)  Analyze Windows Artifacts: Mounted Disk, Image or Collections(e.g. KAPE, CyLR)</b><br>
-       Once Windows file artifacts are readable (mounted disk or artifact collection) they can be processed.
+       Once Windows file artifacts are readable (mounted disk or artifact collection) they can be processed using selection 2.
 
         IMPORTANT NOTE: Artifacts must be located in their original path!
         (example: registry files <source_path>/Windows/System32/config)
@@ -177,11 +176,11 @@ Output is sorted by artifact category:
   #### Installed Tools:<br>
 
     From Gift PPA: (Not available for Kali)
-      libscca libewf-tools libbde-tools libvshadow-tools libesedb-tools liblnk-tools<br>
-      libevtx-tools plaso-tools bulk-extractor<br>
+      libscca libewf-tools libbde-tools libvshadow-tools libesedb-tools liblnk-tools
+      libevtx-tools plaso-tools bulk-extractor
 
-    From Python PIP:<br>
-      python-evtx python-registry usnparser tabulate regex iocextract oletools bits_parser pandas construct<br>
+    From Python PIP:
+      python-evtx python-registry usnparser tabulate regex iocextract oletools bits_parser pandas construct
 
     From Github:
       https://github.com/msuhanov/yarp
@@ -215,7 +214,7 @@ Output is sorted by artifact category:
       https://github.com/dfirdetective/WinSearchAppCache
       
     From APT (Common)<br>
-      git curl net-tools vim fdisk fdupes sleuthkit dcfldd afflib-tools autopsy qemu-utils lvm2 exfatprogs kpartx pigz exif dc3dd pff-tools python3-lxml sqlite3 jq yara gddrescue unzip p7zip-full p7zip-rar hashcat foremost testdisk chntpw graphviz ffmpeg mediainfo ifuse clamav geoip-bin geoip-database geoipupdate python3-impacket libsnappy-dev reglookup<br>
+      git curl net-tools vim fdisk fdupes sleuthkit dcfldd afflib-tools autopsy qemu-utils lvm2 exfatprogs kpartx pigz exif dc3dd pff-tools python3-lxml sqlite3 jq yara gddrescue unzip p7zip-full p7zip-rar hashcat foremost testdisk chntpw graphviz ffmpeg mediainfo ifuse clamav geoip-bin geoip-database geoipupdate python3-impacket libsnappy-dev reglookup
 
     From APT (Kali Only):<br>
-       gnome-terminal libewf-dev ewf-tools libbde-utils libvshadow-utils libesedb-utils xmount liblnk-utils libevtx-utils python3-llfuse python3-libesedb plaso<br>
+       gnome-terminal libewf-dev ewf-tools libbde-utils libvshadow-utils libesedb-utils xmount liblnk-utils libevtx-utils python3-llfuse python3-libesedb plaso
