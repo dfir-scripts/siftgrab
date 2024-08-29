@@ -18,7 +18,7 @@ It can also be used at scale to process multiple data collections at once from t
 ### Installation Option 1:
 **Install script**<br>
 To install all tools and dependencies, run the following commands:
-(Recommended installation is using fresh VM installation of Ubuntu, Kali or WSL Ubuntu.)<br>
+(Recommended installation is using fresh installation of Ubuntu 22.04 VM or WSL.  The install script works on Kali with some limitations. For full best results use the Docker install)<br>
 <b>Note:</b> WSL 2 has file system performance issues which may cause it to run [slower](https://github.com/microsoft/WSL/issues/9430) <br>
 Consider WSL 1 or VM/Docker installs if speed is an issue. 
 
