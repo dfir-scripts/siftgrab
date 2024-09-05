@@ -320,7 +320,7 @@ while [ opt != '' ]
            #check for docker
            [ -f /.dockerenv ] && make_red "Siftgrab is running from Docker!!" && \
 echo "Start Siftgrab Docker using the \"-v\" option to access the host's images and disks
-" && make_green "(e.g.  sudo docker run -it -v -v /media:/media /mnt:/mnt -v /cases:/cases  siftgrab)
+" && make_green "(e.g.  sudo docker run -it -v /media:/media -v /mnt:/mnt -v /cases:/cases  dfirscripts/siftgrab)
 " && show_menu;
            /usr/local/bin/ermount -h
            read -n1 -r -p "Press any key to continue..." key
