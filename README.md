@@ -114,21 +114,22 @@ sudo siftgrab
 <b>7)  lf - Terminal file manager</b><br>
        -Launch lf file system browser<br><br>
 <b>8)  Additional Parsers and Memory Analysis (Sub Menu)</b><br>
-** <b>1)  Evtxtract</b> (Carve binary files for Windows Event Logs)<br>
-** <b>2)  ntfs_parser</b> (Deep parsing of MFT,USNJRNL,Logfile,INDX)<br>
-** <b>3)  bulk_extractor</b> (Image and DMP file artifact extraction)<br>
-** <b>4)  Didier Stevens Tools</b> (oledump, pdftool many parsers and decoders)<br>
-** <b>5)  Volatility 3.0</b> (Memory image analysis)<br>
-** <b>6)  Memprocfs</b> (Mount and analyze Windows memory images)<br>
-** <b>7)  BMC-Tools</b> (Carve RDP Image Tiles from RDP Cache)<br>
-** <b>8)  Vinetto</b> (Extract Thumbnail Cache)<br>
-** <b>9)  Yarp + Registryflush</b> (Merge registry hives with transaction logs)<br>
-** <b>10) EventTranscriptParser.py</b> (Parse Eventranscript.db)<br>
+** 1)  Evtxtract (Carve binary files for Windows Event Logs)<br>
+** 2)  ntfs_parser (Deep parsing of MFT,USNJRNL,Logfile,INDX)<br>
+** 3)  prefetch-carve.py (Carve binary files for prefetch)<br>
+** 4)  usncarve.py (Carve binary files for $usnjrnl entries)<br>
+** 5)  bulk_extractor(Image and DMP file artifact extraction)<br>
+** 6)  Didier Stevens Tools(oledump, pdftool many parsers and decoders)<br>
+** 7)  Volatility 3.0 (Memory image analysis)<br>
+** 8)  Memprocfs (Mount and analyze Windows memory images)<br>
+** 9)  BMC-Tools (Carve RDP Image Tiles from RDP Cache)<br>
+** 10) Yarp + Registryflush (Merge registry hives with transaction logs)<br>
+** 11) EventTranscriptParser.py (Parse Eventranscript.db)<br>
 
 <b>9)  Terminal</b><br>
        -Access terminal from menu<br><br>
 <b>10) Read me</b><br>
-       -View the readme file<br><b>
+       -View the readme file<br></b>
 
 ### Results<br>
 Results can be reviewed from Siftgrab using lf file browser or from Windows using preview programs like [Quicklook](https://github.com/QL-Win/QuickLook). Results are mainly csv and json so they can easily be searched and reviewed using grep, jq, excel or search tools like [Agent Ransack](https://www.mythicsoft.com/agentransack/). 
@@ -196,37 +197,39 @@ Output is sorted by artifact category:
       libevtx-tools plaso-tools bulk-extractor
 
     From Python PIP:
-      python-evtx python-registry usnparser tabulate regex iocextract oletools bits_parser pandas construct
+      prefetchcarve usncarve LnkParse3 usnparser tabulate puremagic construct libesedb-python==20181229 openpyxl>=2.6.2 pefile>=2019.4.18 python-registry>=1.3.1 pywin32-ctypes>=0.2.0 six>=1.12.0 bits_parser pyarrow evtxtract beautifulsoup4 libscca-python setuptools==58.2.0 python-evtx regex oletools pandas sqlalchemy
 
-    From Github:
-      https://github.com/mthcht/awesome-lists
-      https://github.com/ANSSI-FR/bmc-tools
-      https://github.com/msuhanov/yarp
-      https://github.com/msuhanov/dfir_ntfs
-      https://github.com/dkovar/analyzeMFT
-      https://github.com/fireeye/BitsParser
-      https://github.com/dfir-scripts
-      https://github.com/keydet89/Tools
-      https://github.com/obsidianforensics/hindsight
-      https://github.com/davidpany/WMI_Forensics
-      https://github.com/volatilityfoundation/volatility3
-      https://github.com/kacos2000
-      https://github.com/DidierStevens/DidierStevensSuite
-      https://github.com/brimorlabs/KStrike
-      https://github.com/MarkBaggett/srum-dump
-      https://github.com/salehmuhaysin/JumpList_Lnk_Parser
-      https://github.com/wagga40/Zircolite
-      https://github.com/stuxnet999/EventTranscriptParser
-      https://github.com/Silv3rHorn/4n6_misc
-      https://github.com/williballenthin/python-registry
-      https://github.com/omerbenamram/evtx
-      https://github.com/omerbenamram/mft
-      https://github.com/Yamato-Security/hayabusa
-      https://github.com/gokcehan/lf
-      https://cert.at/de/downloads/software/software-densityscout
-      https://github.com/gleeda/misc-scripts/blob/master/misc_python/jobparser.py
+
+  From Github:<br>
+```  https://github.com/mthcht/awesome-lists
+  https://github.com/ANSSI-FR/bmc-tools
+  https://github.com/msuhanov/yarp
+  https://github.com/msuhanov/dfir_ntfs
+  https://github.com/dkovar/analyzeMFT
+  https://github.com/yarox24/EvtxHussar/
+  https://github.com/fireeye/BitsParser
+  https://github.com/dfir-scripts
+  https://github.com/keydet89/Tools
+  https://github.com/obsidianforensics/hindsight
+  https://github.com/davidpany/WMI_Forensics
+  https://github.com/volatilityfoundation/volatility3
+  https://github.com/kacos2000
+  https://github.com/DidierStevens/DidierStevensSuite
+  https://github.com/brimorlabs/KStrike
+  https://github.com/MarkBaggett/srum-dump
+  https://github.com/salehmuhaysin/JumpList_Lnk_Parser
+  https://github.com/wagga40/Zircolite
+  https://github.com/stuxnet999/EventTranscriptParser
+  https://github.com/Silv3rHorn/4n6_misc
+  https://github.com/omerbenamram/evtx
+  https://github.com/omerbenamram/mft
+  https://github.com/Yamato-Security/hayabusa
+  https://github.com/gokcehan/lf
+  https://cert.at/de/downloads/software/software-densityscout
+  https://github.com/gleeda/misc-scripts/blob/master/misc_python/jobparser.py
       
-    From APT (Common)
-      git curl net-tools vim fdisk fdupes sleuthkit dcfldd afflib-tools autopsy qemu-utils lvm2 exfatprogs kpartx pigz exif dc3dd pff-tools python3-lxml sqlite3 jq yara gddrescue unzip p7zip-full p7zip-rar hashcat foremost testdisk chntpw graphviz ffmpeg mediainfo ifuse clamav geoip-bin geoip-database geoipupdate python3-impacket libsnappy-dev reglookup ripgrep vinetto
-    From APT (Kali Only):
-      gnome-terminal libewf-dev ewf-tools libbde-utils libvshadow-utils libesedb-utils xmount liblnk-utils libevtx-utils python3-llfuse python3-libesedb plaso
+  From APT (Common)
+  git curl net-tools vim fdisk fdupes sleuthkit dcfldd afflib-tools autopsy qemu-utils lvm2 exfatprogs kpartx pigz exif dc3dd pff-tools python3-lxml sqlite3 jq yara gddrescue unzip p7zip-full p7zip-rar hashcat foremost testdisk chntpw graphviz ffmpeg mediainfo ifuse clamav geoip-bin geoip-database geoipupdate python3-impacket libsnappy-dev reglookup ripgrep vinetto
+From APT (Kali Only):
+  gnome-terminal libewf-dev ewf-tools libbde-utils libvshadow-utils libesedb-utils xmount liblnk-utils libevtx-utils python3-llfuse python3-libesedb plaso
+```
