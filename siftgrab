@@ -3,268 +3,6 @@
 #set time to UTC
 export TZ='Etc/UTC'
 
-#Read Me File
-function read_me(){
-echo "
-https://github.com/dfir-scripts
-########################################################################################
-Siftgrab is an  automation script written in Bash to parse Windows forensic artifacts
-from Linux.  It is a wrapper for open source forensic tools to mount and extract
-Windows artifacts.
-
-The name siftgrab is somewhat of a misnomer and is a reference SANS 508 Gold Paper I wrote in 2018.
-The original idea was to incorporate a parser that would work inside of the SANS Sift Linux distro.
-Since then it has been expanded and updated to install natively on Debian based systems and as a Docker container.
-
-I use it every day in my forensics lab and it is frequently updated.
-
-Installation Option 1:
-Install script
-########################################################################################
-To install all tools and dependancies, run the following commands:
-  (Recommended installation is using fresh VM installation of Ubuntu or WSL Ubuntu.)
-
-  INSTALLATION COMMANDS:
-    wget https://raw.githubusercontent.com/dfir-scripts/installers/main/install-forensic-tools.sh
-    sudo chmod 755 install-forensic-tools.sh
-    sudo ./install-forensic-tools.sh
-
-Installation Option 2:
-Docker Install
-########################################################################################
-Download and install latest version
-  sudo docker pull dfirscripts/siftgrab:latest
-  
-Run (Use -v paramerter to access mount points and output folders outside of docker)
-  sudo docker run -it -v /mnt:/mnt -v /cases:/cases dfirscripts/siftgrab
-  
-
-Installation Detail:
-  Directory creation:
-    The following directories are created:
-     /mnt/raw
-     /mnt/image_mount
-     /mnt/vss
-     /mnt/shadow
-     /mnt/bde
-     /mnt/smb
-     /cases
-     /usr/local/src (contains directories of installed software)
-     /opt/app/<symbolic link to /usr/local/src>
-
-  Installed Tools:
-    When possible, tools are installed using the Gift/Stable PPA Repository
-    (https://launchpad.net/~gift/+archive/ubuntu/stable). Tools like plaso, automatically 
-    install many dependant packages that are not listed below.
-    ########################################################################################
-    From Gift PPA:
-      libscca libewf-tools libbde-tools libvshadow-tools libesedb-tools liblnk-tools
-      libevtx-tools plaso-tools bulk-extractor
-
-    From Python PIP:
-      python-evtx python-registry usnparser tabulate regex iocextract oletools bits_parser pandas construct
-
-    From Github:
-      https://github.com/msuhanov/yarp
-      https://github.com/msuhanov/dfir_ntfs
-      https://github.com/dkovar/analyzeMFT
-      https://github.com/fireeye/BitsParser
-      https://github.com/dfir-scripts
-      https://github.com/keydet89/Tools
-      https://github.com/obsidianforensics/hindsight
-      https://github.com/davidpany/WMI_Forensics
-      https://github.com/volatilityfoundation/volatility3
-      https://github.com/kacos2000
-      https://github.com/williballenthin/INDXParse
-      https://github.com/DidierStevens/DidierStevensSuite
-      https://github.com/brimorlabs/KStrike
-      https://github.com/MarkBaggett/srum-dump
-      https://github.com/salehmuhaysin/JumpList_Lnk_Parser
-      https://github.com/wagga40/Zircolite
-      https://github.com/stuxnet999/EventTranscriptParser
-      https://github.com/Silv3rHorn/4n6_misc
-      https://github.com/williballenthin/python-registry
-      https://github.com/omerbenamram/evtx
-      https://github.com/omerbenamram/mft
-      https://github.com/Yamato-Security/hayabusa
-      https://github.com/gokcehan/lf
-      https://cert.at/de/downloads/software/software-densityscout
-      https://github.com/gleeda/misc-scripts/blob/master/misc_python/jobparser.py
-      https://github.com/AtesComp/Vinetto/
-      https://github.com/ANSSI-FR/bmc-tools
-
-    From Github (Yara Rules using get-yara-rules.sh)
-      https://github.com/Neo23x0/signature-base
-      https://github.com/bartblaze/Yara-rules
-      https://github.com/Yara-Rules
-      https://github.com/reversinglabs/reversinglabs-yara-rules
-      TODO: https://github.com/dfirdetective/WinSearchAppCache
-
-    From APT (Common)
-      git curl net-tools vim fdisk fdupes sleuthkit attr dcfldd afflib-tools autopsy qemu-utils 
-      lvm2 exfatprogs kpartx pigz exif dc3dd python-is-python3 pff-tools python3-lxml sqlite3 jq 
-      yara gddrescue unzip p7zip-full p7zip-rar hashcat foremost testdisk chntpw graphviz ffmpeg 
-      mediainfo ifuse clamav geoip-bin geoip-database geoipupdate python3-impacket libsnappy-dev
-      reglookup
-
-    From APT (Kali Only):
-       gnome-terminal libewf-dev ewf-tools libbde-utils libvshadow-utils libesedb-utils xmount
-       liblnk-utils libevtx-utils python3-llfuse python3-libesedb plaso
-
- Launching Siftgrab
-########################################################################################
-  To access the siftgrab menu simply type: sudo siftgrab
-
- dfir-scripts 2024_9
-********************************************************
- Mount and Extract Information From Windows Disk Images
-********************************************************
-**  1)  Mount a Disk or Image with ermount
-        (E01, RAW, AFF, QCOW, VMDK, VHDX or Physical disk)
-**  2)  Process Windows Artifacts from a Mounted Disk, Image or Collection
-**  3)  Multiple System Processing of Windows Artifacts (e.g. KAPE, CyLR)
-**  4)  Windows Event Log Extraction and Sigma Scan
-**  5)  Registry Extraction and Timeline (Regripper)
-**  6)  Copy Windows Artifacts from Mounted Image(s)
-**  7)  lf - Terminal file manager
-**  8)  Terminal
-**  9)  Additional Parsers and Memory Analysis
-**  10) Read me
-
-Select a menu option number or enter to exit.
-
-Menu Options Detail
-########################################################################################
-    1)  Mount a Disk or Image with ermount
-
-       Mounting disks
-       Basic disk mounting (ermount) can be performed using siftgrab menu selection 1) 
-       or from the terminal which provides extended options.  Disk mounting should occur
-       before running the docker instance of siftgrab 
-       ********************************************************
-       EverReady Disk Mount
-       Mount/umounts disk and disk images
-       (E01, vmdk, vhd(x), vdi, raw, iso, hfs+, qcow2 and vss)
-
-       USAGE: /usr/local/bin/ermount [-h -s -u -b -rw] -i  \
-       <Image file or Disk> -m <Mount Point> -t <File System Type>
-
-       OPTIONAL:
-           -i Image file or disk source to mount
-           -m Mount point (Default /mnt/image_mount)
-           -t File System Type (Default NTFS)
-           -h This help text
-           -s ermount status
-           -u umount all disks from /usr/local/bin/ermount mount points
-           -b mount bitlocker encrypted volume
-           -rw mount image read write
-
-        Default mount point: /mnt/image_mount
-        Minimum requirements:
-        ewf-tools, afflib3, qemu-utils, libvshadow-utils, libbde-utils
-        Works best with updated drivers from the gift repository
-        (add-apt-repository ppa:gift/stable)
-        Warning: forcefully disconnects mounted drives and Network Block Devices
-        When in doubt reboot
-        ********************************************************
-        Additional information on ermount can be found here:
-
-        https://dfir-scripts.medium.com/forensic-mounting-of-disk-images-using-ubuntu-20-04-fe8165fca3eb
-
-    2)  Analyze Windows Artifacts: Mounted Disk, Image or Collection(e.g. KAPE, CyLR)
-
-       Once Windows file atrifacts are readable from the system
-        (mounted disk or artifact collection) siftgrab can then process artifacts.
-
-        IMPORTANT NOTE: Artifacts must be located in their original path!
-        (example: registry files <source_path>/Windows/System32/config)
-
-        Menu selection #2 prompts for the following information:
-               Image source directory (default /mnt/image_mount)
-               Destination (default /cases).
-               Choose y/n to process \$USNJRNL and \$LogFile?
-               Choose y/n to process event logs greater than 500MB
-               Choose y/n to backup copies of Windows Event Logs, Registry and \$MFT
-        If data exists and can be parsed, output will be created
-        for the following different data types:
-           Creates Timelines Repairs registry hives, dumps lsa secrets and NTLM hashes
-           MFT, USNJRNL, RecycleBin, Prefetch, Windows Event Logs, Chrome, Firefox,
-           Brave, Jumplist, LNK, Registry, Amcache, OBJECTS.DATA, BITS, Alternate Data
-           Streams, services, jobs, scheduled tasks, winactivities,Chrome, Firefox,
-           IE/Edge, srudb, current.mdb, Windows Events Logs, winactivities.
-
-        Sigma scans results are created using Hayabusa.
-
-    3)  Analyze Windows Artifacts Collected from Multiple Systems (e.g. KAPE, CyLR)
-        Recursive results using same process as selection 2
-        Source path is the Directory holding unzipped collections
-        Example of source data:
-          /mnt/hgfs/USB/R&D_Vlan
-          Each system's root path is similar to extracted Kape/CyLR collections
-               /mnt/hgfs/USB/R&D_Vlan/RD_System1/C
-               /mnt/hgfs/USB/R&D_Vlan/RD_System2/C
-               ...
-
-    4)  Extract Windows Eventlogs to jsonl and Sigma Scan using Hayabusa
-        Extracts Windows Event Logs to jsonl, run Hayabusa and several parsers.
-        Output goes to a destination named WindowsEventLogs
-
-    5)  Analyze Windows Registry
-        Run regripper on Windows registry.
-        Output goes to a directory using the computer name in the system registry
-
-    6)  Save a copy of Windows Artifacts
-        Save a Gzipped copy of common Windows Artifacts from a mounted disk
- 
-    7)  lf - Terminal file manager
-        Launch lf file system browser
-
-    8)  Terminal window
-    9)  Submenu of Additional Parsers
-        Evtxtract, Volatility, MemProcFS, BMC-Tools, Vinetto,Bulk Extractor, Didier  Stevens Tools
-    10) Read me
-        View this readme file
-
-Results
-########################################################################################
-
-Triage Output:
-By default output data goes to the /cases directory but can be sent to a network share 
-Output is sorted by artifact category:
-./Alert
-./All_Slicers
-./All_Summary
-./AlternateDataStreams
-./Amcache
-./BITS
-./Browser_Activity
-./Deleted_Files
-./EventTranscript
-./LNK
-./LogFile
-./lolbas
-./MFT
-./PCA
-./PowerShell
-./Prefetch
-./RDP
-./Registry
-./ScheduledTasks
-./Services
-./SRUM
-./Timeline
-./USB
-./UserAccessLog
-./USNJRNL
-./Volatile
-./WinActivitiesCache
-./WindowsEventLogs
-./WMI
-
-########################################################################################
-
-"
-}
 #Function to produce Red Text Color
 function make_red() {
     COLOR='\033[01;31m' # bold red
@@ -305,7 +43,6 @@ function show_menu(){
     echo -e "**  7) ${GREEN} lf - Terminal file manager${NORMAL}"
     echo -e "**  8) ${GREEN} Terminal${NORMAL}"
     echo -e "**  9) ${GREEN} Additional Parsers and Memory Analysis${NORMAL}"
-    echo -e "**  10) ${GREEN}Read me${NORMAL}"
     echo ""
     echo -e "Select a menu option number or ${RED}enter to exit. ${NORMAL}"
     read opt
@@ -328,7 +65,7 @@ echo "Start Siftgrab Docker using the \"-v\" option to access the host's images 
            show_menu;
            ;;
 
-        #Menu Selection: Process Artifacts Collected using RegRipper and other Tools
+        #Menu Selection: Process artifacts collected using RegRipper and other tools
         2) clear;
            make_green "Process Artifacts for Triage"
            set_msource_path
@@ -337,12 +74,10 @@ echo "Start Siftgrab Docker using the \"-v\" option to access the host's images 
            set_dsource_path
            check_dsource_path
            create_triage_dir
-           get_evtxsize
            start_time=$SECONDS
-           #todo  event_transcript_parser
+           cp_artifacts
            repair_hives
-           jumplink_parser
-           lnkinfo
+           parse_lnks
            rip_software
            rip_system
            rip_security
@@ -366,10 +101,12 @@ echo "Start Siftgrab Docker using the \"-v\" option to access the host's images 
            run_hayabusa
            parse_evtx_jsonl
            rdp_parse
-           #zircolite_evtx
+           zircolite_evtx
+           evtx_hussar
            srum_dump
            analyze_mft
            dump_mft
+           parse_usn
            consolidate_timeline
            scan_for_lolbas
            #Clean-up
@@ -386,7 +123,7 @@ echo "Start Siftgrab Docker using the \"-v\" option to access the host's images 
            read -n1 -r -p "Press any key to continue..." key
            show_menu;
             ;;
-        #Menu Selection: Process Artifacts Collected using RegRipper and other Tools
+        #Menu Selection: Extract artifacts c`ollected from multiple sources using RegRipper and other tools
         3) clear;
           make_green "
 Enter path containing multiple extracted Kape or Cylr collections
@@ -413,6 +150,7 @@ Enter path containing multiple extracted Kape or Cylr collections
            create_triage_dir
            make_red "Exporting Windows Event Logs to jsonl"
            evtx_dump_json
+           evtx_hussar
            run_hayabusa
            parse_evtx_jsonl
            rdp_parse
@@ -430,6 +168,8 @@ Enter path containing multiple extracted Kape or Cylr collections
         #Menu Selection: Run Regripper on a mounted volume or data source
         5) clear;
            make_green "Run Registry Analysis tools (Regripper, Yarp + RegistryFlush, Secretsdump)"
+           echo "For best results, make sure registry hives contain the original path 
+(e.g. <mount dir>/Windows/System32/config/<hive>, <mount dir>/Users/<user name>)"
            set_msource_path
            set_windir
            get_computer_name
@@ -486,12 +226,6 @@ Enter path containing multiple extracted Kape or Cylr collections
         9) carving_submenu
             clear
             show_menu;
-            ;;
-        #Menu Selection:dfir-scripts Readme and Tools
-        10) clear;
-           cd /opt/app
-           read_me |less
-           show_menu;
             ;;
         x)exit;
         ;;
@@ -555,6 +289,7 @@ function set_windir(){
       amcache_hive=$(find $windir/[a,A]*/[P,p][R,r]* -maxdepth 1 -type f 2>/dev/null|egrep -m1 -i \/amcache.hve$)
       registry_hives=("$software_hive" "$sam_hive" "$system_hive" "$security_hive" "$amcache_hive")
       csv2XL="/opt/app/dfir-scripts/csv2XLsheet/csv2XLsheet"
+      all_users=$(find /mnt/image_mount/ -maxdepth 1 -type d 2>/dev/null|egrep -m1 -i ProgramData$)
       [ "$windir" != "" ] && echo "Windows Directory => $windir"
       [ "$winsysdir" != "" ] && echo "Windows System32 Directory => $winsysdir"     
       [ "$regdir" != "" ] && echo  "Registry Directory =>" $regdir || regdir=$mount_dir
@@ -581,7 +316,7 @@ triage_dirs=("WinActivitiesCache" "AlternateDataStreams" "Alert" "Amcache" "BITS
 "Registry/Regripper/Program_Execution" "Registry/Regripper/Run_Keys" "Registry/Regripper/CLSID" "Registry/Regripper/Settings" \
 "Registry/Regripper/System_Info/Network" "Registry/Regripper/System_Info/Software" "USB" "Registry/Regripper/USERS" \
 "Registry/Regripper/User_Searches" "Registry/yarp-registryflush.py" "Registry/Impacket" "ScheduledTasks" "Services" "SRUM" "All_Summary" \
-"Timeline/TLN" "USNJRNL" "UserAccessLog" "WindowsEventLogs" "WMI" "Volatile" "All_Slicers")
+"Timeline/TLN" "USNJRNL" "UserAccessLog" "WindowsEventLogs" "WMI" "Volatile" "All_Slicers" "LogFile" "Artifact")
     for dir_names in "${triage_dirs[@]}";
     do
       mkdir -p $case_dir/$dir_names
@@ -603,14 +338,15 @@ function carving_submenu() {
     echo -e "********************************************************"
     echo -e "**  1) ${GREEN} Evtxtract (Carve binary files for Windows Event Logs)${NORMAL}"
     echo -e "**  2) ${GREEN} ntfs_parser(Deep parsing of MFT,USNJRNL,Logfile,INDX)${NORMAL}"
-    echo -e "**  3) ${GREEN} bulk_extractor(Image and DMP file artifact extraction)${NORMAL}"
-    echo -e "**  4) ${GREEN} Didier Stevens Tools(oledump, pdftool many parsers and decoders)${NORMAL}"
-    echo -e "**  5) ${GREEN} Volatility 3.0 (Memory image analysis)${NORMAL}"
-    echo -e "**  6) ${GREEN} Memprocfs (Mount and analyze Windows memory images)${NORMAL}"
-    echo -e "**  7) ${GREEN} BMC-Tools (Carve RDP Image Tiles from RDP Cache)${NORMAL}"
-    echo -e "**  8) ${GREEN} Vinetto (Extract Thumbnail Cache)${NORMAL}"
-    echo -e "**  9) ${GREEN} Yarp + Registryflush (Merge registry hives with transaction logs)${NORMAL}"
-    echo -e "**  10)${GREEN} EventTranscriptParser.py (Parse Eventranscript.db)${NORMAL}"
+    echo -e "**  3) ${GREEN} prefetch-carve.py (Carve binary files for prefetch)${NORMAL}"
+    echo -e "**  4) ${GREEN} usncarve.py (Carve binary files for \$usnjrnl entries)${NORMAL}"
+    echo -e "**  5) ${GREEN} bulk_extractor(Image and DMP file artifact extraction)${NORMAL}"
+    echo -e "**  6) ${GREEN} Didier Stevens Tools(oledump, pdftool many parsers and decoders)${NORMAL}"
+    echo -e "**  7) ${GREEN} Volatility 3.0 (Memory image analysis)${NORMAL}"
+    echo -e "**  8) ${GREEN} Memprocfs (Mount and analyze Windows memory images)${NORMAL}"
+    echo -e "**  9) ${GREEN} BMC-Tools (Carve RDP Image Tiles from RDP Cache)${NORMAL}"
+    echo -e "**  10)${GREEN} Yarp + Registryflush (Merge registry hives with transaction logs)${NORMAL}"
+    echo -e "**  11)${GREEN} EventTranscriptParser.py (Parse Eventranscript.db)${NORMAL}"
     echo ""
     echo -e "Select a submenu option number or ${RED}enter to go back. ${NORMAL}"
     read subopt
@@ -640,6 +376,24 @@ function carving_submenu() {
                    carving_submenu;
                    ;;
                 3) clear
+                   make_green "Prefetch-carve"
+                   cd /cases
+                   /opt/venv/bin/prefetch-carve.py -h
+                   echo -e  "\n \n"
+                   activate_venv
+                   clear
+                   carving_submenu;
+                   ;;
+                4) clear
+                   make_green "usncarve"
+                   cd /cases
+                   /opt/venv/bin/usncarve.py -h
+                   echo -e  "\n \n"
+                   activate_venv
+                   clear
+                   carving_submenu;
+                   ;;
+                5) clear
                    make_green "bulk_extractor(Carve data for artifacts)"
                    cd /cases
                    bulk_extractor -h |head -n 3
@@ -648,7 +402,7 @@ function carving_submenu() {
                    clear
                    carving_submenu;
                    ;;
-                4) clear
+                6) clear
                    make_green "Didier Stevens Suite(Many tools for artifact extraction)"
                    cd /opt/app/DidierStevensSuite/
                    echo "https://blog.didierstevens.com/didier-stevens-suite/
@@ -666,7 +420,7 @@ SHA256: 557D9A03D5BECE1EFDA0E1080DFA5804FDA6D3C7A91A874AF9AE81D8FC3ABCB0"
                    cd /cases
                    carving_submenu;
                    ;;
-                5) clear
+                7) clear
                    make_green "Volatility 3"
                    cd /opt/app/volatility3
                    head -n 20 /opt/app/volatility3/README.md 
@@ -674,7 +428,7 @@ SHA256: 557D9A03D5BECE1EFDA0E1080DFA5804FDA6D3C7A91A874AF9AE81D8FC3ABCB0"
                    activate_venv
                    carving_submenu;
                    ;;
-                6) clear
+                8) clear
                    make_green "Memprocfs"
                    cd /opt/app/MemProcFS
                    echo " MemProcFS v5.11.4 COMMAND LINE REFERENCE:                                   
@@ -699,7 +453,7 @@ SHA256: 557D9A03D5BECE1EFDA0E1080DFA5804FDA6D3C7A91A874AF9AE81D8FC3ABCB0"
                    activate_venv
                    carving_submenu;
                    ;;
-                7) clear
+                9) clear
                    make_green "BMC-Tools"
                    echo -e  "\n"
                    cd /opt/app/BMC-Tools/
@@ -708,22 +462,15 @@ SHA256: 557D9A03D5BECE1EFDA0E1080DFA5804FDA6D3C7A91A874AF9AE81D8FC3ABCB0"
                    activate_venv
                    carving_submenu;
                    ;;
-                8) clear
-                   make_green "Vinetto"
-                   vinetto -h
-                   cd /cases
-                   bash
-                   carving_submenu;
-                   ;;
-                9) clear
+                10) clear
                    make_green "Yarp + Registryflush (Merge transaction logs to registry hives)"
-                   cd /opt/app/Silv3rhorn/
+                   cd /opt/venv/bin/
                    /opt/venv/bin/python registryFlush.py -h
                    echo -e  "\nsee also: yarp-carver, yarp-mount, yarp-print, yarp-timeline\n \n"
                    activate_venv
                    carving_submenu;
                    ;;
-                10) clear
+                11) clear
                    make_green "EventTranscriptParser"
                    cd  /opt/app/EventTranscriptParser
                    /opt/venv/bin/python /opt/app/EventTranscriptParser/EventTranscriptParser.py -h
@@ -762,7 +509,6 @@ function recurse_source(){
     recurse_case_dir=$case_dir
     recurse_timeline_dir=$timeline_dir
     recurse_triage_dir=$case_dir
-    #source /opt/venv/bin/activate
     find $mount_dir -maxdepth 2 -type d 2>/dev/null |grep -Ei \/[A-Z]{1}$ | sed 's|${mount_dir}||'|awk -F'/' '{print "/"$(NF-1)"/"$NF}' | \
     while read d;
     do
@@ -773,8 +519,7 @@ function recurse_source(){
       timeline_dir="$case_dir/Timeline"
       create_triage_dir
       repair_hives
-      jumplink_parser
-      lnkinfo
+      parse_lnks
       rip_software
       rip_system
       rip_security
@@ -797,16 +542,16 @@ function recurse_source(){
       run_hayabusa
       parse_evtx_jsonl
       rdp_parse
-      #zircolite_evtx
+      zircolite_evtx
       srum_dump
       analyze_mft
       dump_mft
       consolidate_timeline
-      scan_for_lolbas
-      Clean-up
-      make_green "Removing Duplicates..."
-      echo "Please Wait..."
-      fdupes -rdN $case_dir
+      #scan_for_lolbas
+      #Clean-up
+      #make_green "Removing Duplicates..."
+      #echo "Please Wait..."
+      #fdupes -rdN $case_dir
       make_green "The Processed Artifacts are Located in $case_dir"
       du -sh $case_dir
       make_green Process Complete!
@@ -821,6 +566,30 @@ function recurse_source(){
       case_dir=$recurse_case_dir
       timeline_dir=$recurse_timeline_dir
     done
+}
+
+function cp_artifacts(){
+  make_green "Creating a local copy of registry, evtx logs and \$MFT
+Standby..."
+  
+  mkdir -p $case_dir/Artifact/Windows/System32/config
+  mkdir -p $case_dir/Artifact/Windows/System32/config/RegBack
+  mkdir -p $case_dir/Artifact/Windows/System32/winevt/Logs
+  cd $mount_dir
+  [ "$(ls $mount_dir/\$MFT 2>/dev/null)" ] && cp $mount_dir/\$MFT $case_dir/Artifact/
+  [ "$(ls -A $regdir 2>/dev/null)" ] && cp -Lr $regdir $case_dir/Artifact/Windows/System32/config/
+  [ "$(ls -A $evtxdir 2>/dev/null)" ] && cp -L $evtxdir/*.evtx $case_dir/Artifact/Windows/System32/winevt/Logs
+  find $user_dir/*/ -maxdepth 1 -type f 2>/dev/null| grep -iE NTUSER.dat$\|.log | while read d;
+  do
+    user_name=$( echo "$d"|sed 's/\/$//'|awk -F"/" '{print $(NF-1)}')
+    mkdir -p $case_dir/Artifact/Users/$user_name 2>/dev/null
+    cp -L "$d" $case_dir/Artifact/Users/$user_name/ 2>/dev/null
+  done
+  find $windir/[I,i][N,n][F,f] -type f -iname "setupapi*log"|\
+  while read d;
+  do
+    cp -L "$d" $triage_dir/USB/setupapi.dev.log-$comp_name.txt 2>/dev/null;
+  done
 }
 
 #Read registry hives and merge transaction logs for dirty hives
@@ -849,30 +618,20 @@ function repair_hives(){
   find $case_dir/Registry/yarp-registryflush.py/$comp_name -type f |while read d; do a=$(echo "$d"| awk -F'/' '{print $(NF)}'); rip.pl -a -r $d >> $case_dir/Registry/Regripper/"$a"-MERGED-$comp_name;done
 }
 
-function jumplink_parser(){
+function parse_lnks(){
     cd $mount_dir
-    lnk_exists=$(find $user_dir/*/AppData/Roaming/Microsoft/Windows/Recent/ maxdepth 1 -type f 2>/dev/null |grep -i -m1 lnk$)
+    lnk_exists=$(find $user_dir/*/AppData -type f 2>/dev/null |grep -i -m1 lnk$)
     if [ -f "$lnk_exists" ]; then
-      make_green "Running JLParse.py extracting LNKS and Jumplists to json"
-      /opt/venv/bin/python /opt/app/JumpList_Lnk_Parser/JLParser.py -p -a \
-      /opt/app/EricZimmerman/AppIDs.csv -d $user_dir -o $case_dir/LNK/JumpList_Lnk_Parser-$comp_name.json
-      sleep 1
-      /opt/app/dfir-scripts/WinEventLogs/jq/JLParser-stats.sh \
-      $case_dir/LNK/JumpList_Lnk_Parser-$comp_name.json >> $case_dir/All_Summary/JL-stats-$comp_name.csv 
-    fi
-}
+      make_green "Running lnk2j to extract LNKS to jsonl"
 
-function lnkinfo(){
-    cd $mount_dir
-    lnk_exists=$(find $user_dir/*/AppData/Roaming/Microsoft/Windows/Recent/ maxdepth 1 -type f 2>/dev/null |grep -i -m1 lnk$)
-    if [ -f "$lnk_exists" ]; then
-      make_green "extracting lnk files (lnkinfo)"
-      find $user_dir/ -type f|grep lnk$ | \
-      while read d;
-      do
-        echo $d && \
-        /usr/bin/lnkinfo -v "$d"  >> $case_dir/LNK/lnkinfo-$comp_name.txt
-      done
+      echo "/opt/venv/bin/python /opt/venv/bin/lnk2j.py -i $user_dir -f jsonl -o $case_dir/LNK/lnk2j-$comp_name.jsonl"
+      echo "/opt/venv/bin/python /opt/venv/bin/lnk2j.py -i $all_users -f jsonl |tee -a $case_dir/LNK/lnk2j-$comp_name.jsonl"
+
+      /opt/venv/bin/python /opt/venv/bin/lnk2j.py -i $user_dir -f jsonl -o $case_dir/LNK/lnk2j-$comp_name.jsonl
+      /opt/venv/bin/python /opt/venv/bin/lnk2j.py -i $all_users -f jsonl -o $case_dir/LNK/lnk2j-$comp_name.jsonl
+    fi
+    if [ -f "$case_dir/LNK/lnk2j-$comp_name.jsonl" ]; then
+      /opt/venv/bin/python /usr/local/src/dfir-scripts/WinEventLogs/jsonl_to_csv.py $case_dir/LNK/lnk2j-$comp_name.jsonl |tee $case_dir/LNK/lnk2j-$comp_name.csv
     fi
 }
 
@@ -1384,7 +1143,7 @@ function get_ps_console_log(){
 
 #Parse Windows History File
 function extract_winactivities(){
-  Winactivities_file=$(find $user_dir/*/AppData/Local/C*m/ -type f 2>/dev/null |grep -i -m 1 ActivitiesCache.db$)
+  Winactivities_file=$(find $mount_dir -type f -iwholename "*Users/*/AppData/Local/ConnectedDevicesPlatform/l*/ActivitiesCache.db$*" | head -1)
   if [ -f "$Winactivities_file" ]; then
     make_green "Searching for ActivitiesCache.db"
     cd $user_dir/
@@ -1392,12 +1151,11 @@ function extract_winactivities(){
     while read ntuser_path;
     do
       user_name=$( echo "$ntuser_path"|sed 's/\/$//'|awk -F"/" '{print $(NF-1)}')
-      find "$user_dir/$user_name/AppData/Local/ConnectedDevicesPlatform" -maxdepth 5 -type f 2>/dev/null | \
-      grep -i "ActivitiesCache.db$"| sed 's|^\./||'|\
+      find $user_dir -type f -iwholename "*$user_name/AppData/Local/ConnectedDevicesPlatform/l*/ActivitiesCache.db$*" 2>/dev/null | \
       while read d;
       do
         sqlite3 "$d" ".read /opt/app/kacos2000/WindowsTimeline/WindowsTimeline.sql" 2>/dev/null >> $case_dir/WinActivitiesCache/WindowsTimeline.sql-$user_name-$comp_name.csv
-    done
+      done
     done
     find $case_dir/WinActivitiesCache/ -type f 2>/dev/null |grep WindowsTimeline.sql | \
     while read f;
@@ -1405,8 +1163,6 @@ function extract_winactivities(){
       user_name=$(echo "$f"|sed 's|.*/||' |awk -F'\\-' '{print $2}')
       cat "$f" 2>/dev/null| \
       awk -F'|' '{print $3}' | awk -F'\' '{print $NF}'|sort |uniq -c|sort -rn >> $case_dir/All_Summary/WinActivitiesCache-stats-$comp_name.csv
-      [ -f $case_dir/All_Summary/WinActivitiesCache-stats-$comp_name.csv ] && sed -i "s/$/,$user_name/" $case_dir/All_Summary/WinActivitiesCache-stats-$comp_name.csv && \
-      sed -i "1i Count lolbas_file,User_Name" $case_dir/All_Summary/WinActivitiesCache-stats-$comp_name.csv
     done
   fi
 }
@@ -1460,6 +1216,13 @@ function evtx_dump_json(){
       echo "Dumping $evtx_file to jsonl"
       evtx_dump "$d" --validate-checksums -o jsonl -f "$case_dir/WindowsEventLogs/evtx_dump/$evtx_file-$comp_name.jsonl"
     done
+  fi
+}
+
+function evtx_hussar(){
+  if [ "$evtxdir" ]; then
+    cd /usr/local/src/EvtxHussar/
+    ./EvtxHussar -m /usr/local/src/EvtxHussar/maps -t /usr/local/src/EvtxHussar/templates $evtxdir -o $case_dir/WindowsEventLogs/EvtxHussar/
   fi
 }
 
@@ -1517,19 +1280,7 @@ function parse_evtx_jsonl(){
   # Get IPv4 Addresses in EVTX files
   if  [ "$(ls -A $case_dir/WindowsEventLogs/evtx_dump/ 2>/dev/null)" ]; then
     make_green "Grepping for IP v4 Addresses in EVTX files"
-    echo "IP_ADDRESS,LOCATION,EVENT_LOG">>$case_dir/All_Summary/IPv4-Addresses-in-evtx-$comp_name.csv
-    find $case_dir/WindowsEventLogs/evtx_dump/ -type f | \
-    while read d;
-    do
-      evtx_log=$(basename "$d")
-      grep -Eoa "\b(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b" """$d"""| \
-      sort -u | grep -Ev ^0\|0\.0\.0\|^127\|^224\|^239 2>/dev/null |while read line;
-      do
-        a=$(geoiplookup $line 2>/dev/null|awk -F',' '{print $2}')
-        [ "$a" == '' ] && a='NON_INTERNET'
-        echo "$line","$a","$evtx_log", >> $case_dir/All_Summary/IPv4-Addresses-in-evtx-$comp_name.csv
-      done
-    done
+    /opt/venv/bin/python /opt/app/dfir-scripts/WinEventLogs/ipv4inevtx.py -e -d $case_dir/WindowsEventLogs/evtx_dump/ >> $case_dir/All_Summary/IPv4-Addresses-in-evtx-$comp_name.csv
   fi
 
 # Get Summary from Security.evtx
@@ -1564,7 +1315,7 @@ function parse_evtx_jsonl(){
   if [ -f "${task_sched}" ]; then
     make_green "Searching for Scheduled Task... (parse_jsonl_tasks.py)"
     /opt/venv/bin/python /opt/app/dfir-scripts/WinEventLogs/parse_jsonl_tasks.py ${task_sched} >> $case_dir/ScheduledTasks/tasks_evtx.py-$comp_name.csv;
-    /opt/venv/bin/python /opt/app/dfir-scripts/WinEventLogs/parse_jsonl_tasks.py -s ${task_sched} >> $case_dir/Summary/tasks_evtx_stacked.py-$comp_name.csv;
+    /opt/venv/bin/python /opt/app/dfir-scripts/WinEventLogs/parse_jsonl_tasks.py -s ${task_sched} >> $case_dir/All_Summary/tasks_evtx_stacked.py-$comp_name.csv;
     task_csv=" $case_dir/ScheduledTasks/tasks_evtx.py-$comp_name.csv "
     task_template="/opt/app/dfir-scripts/csv2XLsheet/templates/TaskScheduleSlicer.xltx"
     task_sheet="Task-Slicer"
@@ -1621,24 +1372,25 @@ function parse_evtx_jsonl(){
 
 function rdp_parse(){
   #Find RDP Connections
-  if [ "$evtxdir" != '' ]; then
-    mkdir -p $case_dir/RDP
-    make_green "Searching for RDP Sessions (parse_evtx_RDP.py)"
-    /opt/venv/bin/python /opt/app/dfir-scripts/WinEventLogs/parse_evtx_RDP.py $evtxdir \
-    >> $case_dir/RDP/parse_evtx_RDP.py-$comp_name.csv;
-    /opt/app/dfir-scripts/WinEventLogs/RDP_Diagram.sh -f $case_dir/RDP/parse_evtx_RDP.py-$comp_name.csv \
-    -o $case_dir/All_Summary/RDP_Diagram.sh-$comp_name.png
-    cat $case_dir/RDP/parse_evtx_RDP.py-$comp_name.csv|\
-    grep -E  \,21\,\|\,23\,\|\,24\,\|\,25\,\|\,1149\,\|\,98\,\|\,131\,\|\,140\,\|\,1102\|\,1105\,\|\,1029 |\
-    while read d;
-      do
-        timestamp=$(echo $d| awk -F',' '{print $1}'| \
-        grep -Eo '^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[1-2][0-9]|3[0-1]) (2[0-3]|[01][0-9]):[0-5][0-9]:[0-5][0-9]')
-        [ "$timestamp" != "" ] && tlntime=$(date -d "$timestamp"  +"%s" 2>/dev/null)
-        evtxinfo=$(echo $d|awk -F"," '{$1=""}1')
-        [ "$timestamp" != "" ] && echo $tlntime"|RDP|"$comp_name"||"$evtxinfo >> $tempfile
-      done
+  if [ "$(ls "$evtxdir" | grep -Ei TerminalServices\|RdpCore 2>/dev/null)" ]; then
+  mkdir -p $case_dir/RDP
+  make_green "Searching for RDP Sessions (parse_evtx_RDP.py)"
+  /opt/venv/bin/python /opt/app/dfir-scripts/WinEventLogs/parse_evtx_RDP.py $evtxdir \
+  >> $case_dir/RDP/parse_evtx_RDP.py-$comp_name.csv;
+  /opt/app/dfir-scripts/WinEventLogs/RDP_Diagram.sh -f $case_dir/RDP/parse_evtx_RDP.py-$comp_name.csv \
+  -o $case_dir/All_Summary/RDP_Diagram.sh-$comp_name.png
+  cat $case_dir/RDP/parse_evtx_RDP.py-$comp_name.csv|\
+  grep -E  \,21\,\|\,23\,\|\,24\,\|\,25\,\|\,1149\,\|\,98\,\|\,131\,\|\,140\,\|\,1102\|\,1105\,\|\,1029 |\
+  while read d;
+    do
+      timestamp=$(echo $d| awk -F',' '{print $1}'| \
+      grep -Eo '^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[1-2][0-9]|3[0-1]) (2[0-3]|[01][0-9]):[0-5][0-9]:[0-5][0-9]')
+      [ "$timestamp" != "" ] && tlntime=$(date -d "$timestamp"  +"%s" 2>/dev/null)
+      evtxinfo=$(echo $d|awk -F"," '{$1=""}1')
+      [ "$timestamp" != "" ] && echo $tlntime"|RDP|"$comp_name"||"$evtxinfo >> $tempfile
+    done
   fi
+
   if [ -f $case_dir/RDP/parse_evtx_RDP.py-$comp_name.csv ]; then
     echo "WINDOWS RDP CONNECTION SUMMARY
 
@@ -1681,7 +1433,7 @@ function analyze_mft(){
     cd $mount_dir
     make_green "Timelining \$MFT Standby...(analyzeMFT.py)"
     [ -f "\$MFT" ] && \
-    /usr/local/src/analyzeMFT/analyzeMFT.py -p -f \$MFT --bodyfull --bodyfile=$case_dir/MFT/analyzeMFT-$comp_name.body
+    time /usr/local/src/analyzeMFT/analyzeMFT.py -p -f \$MFT --bodyfull --bodyfile=$case_dir/MFT/analyzeMFT-$comp_name.body
     [ -f $case_dir/MFT/analyzeMFT-$comp_name.body ] && \
     bodyfile.pl -f $case_dir/MFT/analyzeMFT-$comp_name.body -s $comp_name | \
     sort -rn >> $timeline_dir/TLN/MFT-Timeline-$comp_name.TLN && \
@@ -1724,6 +1476,23 @@ function dump_mft(){
     cat $case_dir/MFT/MFT_Dump-$comp_name.csv| \
     awk -F',' '{if($13 =="true") print substr($16,1,19)",ADS,,,FILE Last Write: FN="substr($20,1,19)";"$22;}' \
     | sed 's/T/ /1' |sed "s/,,,/,${comp_name},,/" |grep -P ^[0-9]{4} >> $case_dir/AlternateDataStreams/AlternateDataStreams-$comp_name.csv
+  fi
+}
+
+#Extract $USNJRNL:$J to TLN and $Logfile
+function parse_usn(){
+  cd $mount_dir
+  if [ -f "\$Extend/\$UsnJrnl:\$J" ]; then
+    make_green "Extracting \$USNJRNL:$J (ntfs_parser)
+    Standby..."
+    echo "/opt/venv/bin/ntfs_parser --usn \$MFT \$Extend/\$UsnJrnl:\$J $case_dir/USNJRNL/ntfs_parser-USNJ-$comp_name.csv"
+    time /opt/venv/bin/ntfs_parser --usn \$MFT \$Extend/\$UsnJrnl:\$J $case_dir/USNJRNL/ntfs_parser-USNJ-$comp_name.csv
+  fi
+  if [ -f "\$LogFile" ]; then
+    make_green "Extracting \$LogFile (ntfs_parser)
+    Standby..."
+    echo "/opt/venv/bin/ntfs_parser --log \$MFT \$LogFile $triage_dir/LogFile/ntfs_parser-LogFile-$comp_name.txt"
+    time /opt/venv/bin/ntfs_parser --log \$MFT \$LogFile $case_dir/LogFile/ntfs_parser-LogFile-$comp_name.txt
   fi
 }
 
@@ -1855,6 +1624,9 @@ function scan_for_lolbas(){
       sed -i "1i Count lolbas_file,User_Name" $case_dir/lolbas/lolbas-in-ActivitiesCache-$comp_name.csv
       rm /tmp/exe.txt 2>/dev/null
     done
+  #***** Lolbas in WinActivitiesCache *****************************
+    [ -f $case_dir/All_Summary/WinActivitiesCache-stats-$comp_name.csv ] && sed -i "s/$/,$user_name/" $case_dir/All_Summary/WinActivitiesCache-stats-$comp_name.csv && \
+    sed -i "1i Count lolbas_file,User_Name" $case_dir/All_Summary/WinActivitiesCache-stats-$comp_name.csv
 }
 
 #function event_transcript_parser(){
