@@ -83,7 +83,8 @@ echo "Start Siftgrab Docker using the \"-v\" option to access the host's images 
            rip_software
            rip_system
            rip_security
-           rip_sam 
+           rip_sam
+           rip_ntuser_usrclass
            rip_amcache.hve
            secrets_dump
            timeline_registry
