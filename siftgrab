@@ -76,7 +76,7 @@ echo "Start Siftgrab Docker using the \"-v\" option to access the host's images 
            start_time=$SECONDS
 ###########Artifact Parsers ##################################
 #### add and remove # to disable/enable artifact parsers #####
-           cp_artifacts
+           #cp_artifacts
            repair_hives
            parse_lnks
            rip_software
@@ -96,7 +96,7 @@ echo "Start Siftgrab Docker using the \"-v\" option to access the host's images 
            analyze_mft
            dump_mft
            parse_usn
-           parse_log_file
+           #parse_log_file
            consolidate_timeline
            winservices
            kstrike_current.mdb
