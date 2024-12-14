@@ -1377,7 +1377,7 @@ function parse_evtx_jsonl(){
 
 # Get Summary from Security.evtx
   find $case_dir/WindowsEventLogs/evtx_dump_$comp_name/ -type f 2>/dev/null | \
-  grep -i \/Security.evtx.jsonl| \
+  grep -i \/Security.evtx-$comp_name.jsonl| \
   while read d;
   do
     echo "SECURITY.EVTX EVENT COUNT" >> $case_dir/All_Summary/Security.evtx-stats-$comp_name.txt
