@@ -1,5 +1,4 @@
 #!/bin/bash
-## todo logfile, indx deep registry, windows eventlogs, carving
 #set time to UTC
 export TZ='Etc/UTC'
 
@@ -29,7 +28,7 @@ function show_menu(){
     GREEN=`echo "\033[0;32m"`
     NORMAL=`echo "\033[m"`
     RED=`echo "\033[31m"`
-    echo -e "${GREEN} dfir-scripts 2025_8${NORMAL}" 
+    echo -e "${GREEN} dfir-scripts 2025_9${NORMAL}" 
     echo -e "********************************************************"
     echo -e "${GRAY} Mount and Extract Information From Windows Disk Images${NORMAL}"
     echo -e "********************************************************"
@@ -107,6 +106,7 @@ echo "Start Siftgrab Docker using the \"-v\" option to access the host's images 
           set_rmsource_path
           recurse_source
           read -n1 -r -p "Press any key to continue..." key
+          ermount -u
           show_menu;
           ;;
         #Menu Selection:  Acquire Data from Mounted Disks or Image Excerpts
@@ -195,6 +195,7 @@ function set_msource_path(){
       echo "Set Path or Enter to Accept Default:"
       read -e -p "" -i $default_msource mount_dir
       [ ! -d "${mount_dir}" ] && make_red "Path does not exist.." && sleep 1 && clear && show_menu
+      [ ! -d "${mount_dir}"/[w,W]indows ] && [ -d "${mount_dir}"/[c,C] ] && mount_dir=$(find $mount_dir[c,C] -maxdepth 0 -type d)
       mount_dir=$(echo $mount_dir |sed 's_.*_&\/_'|sed 's|//*|/|g')
       echo "Data Source =>" $mount_dir
 }
@@ -237,26 +238,27 @@ function set_zimmerman_output(){
 #Find "Windows" directory paths
 function set_windir(){
       cd $mount_dir
-      windir=$(fd windows$ -d 1 -t d -i $mount_dir)
-      winsysdir=$(fd system32 -d 1 -t d -i $windir)
-      user_dir=$(fd users$ -d 1 -t d -i $mount_dir)
-      readarray -t user_names < <(fd . -d 1 -t d $user_dir | awk -F '/' '{print $(NF)}')
-      regdir=$(fd config$ -d 1 -t d -i $winsysdir)
+      windir=$(fd windows$ -d 1 -t d -i $mount_dir 2>/dev/null)
+      winsysdir=$(fd system32 -d 1 -t d -i $windir 2>/dev/null)
+      user_dir=$(fd users$ -d 1 -t d -i $mount_dir 2>/dev/null)
+      readarray -t user_names < <(fd . -d 1 -t d $user_dir 2>/dev/null | awk -F '/' '{print $(NF)}')
+      regdir=$(fd config$ -d 1 -t d -i $winsysdir 2>/dev/null)
       [ "$regdir" != "" ] && echo  "Registry Directory =>" $regdir || regdir=$mount_dir
-      evtxdir=$(find $winsysdir/*evt/*ogs/ -maxdepth 0 -type d)
+      evtxdir=$(find $winsysdir/*evt/*ogs/ -maxdepth 0 -type d 2>/dev/null)
+      [ "$evtxdir" == "" ] &&  evtxdir=$(fd -t f evtx$ . |xargs dirname |sort -u | grep -m1 \/)
       len_evtxdir=$(echo $evtxdir | wc -c)
-      sam_hive=$(fd SAM$ -d 1 -t f -i $regdir)
-      system_hive=$(fd SYSTEM$ -d 1 -t f -i $regdir)
-      security_hive=$(fd SECURITY$ -d 1 -t f -i $regdir)
-      software_hive=$(fd SOFTWARE$ -d 1 -t f -i $regdir)
-      amcache_hive=$(fd -t f -d 1 -i amcache.hve$ $windir/*/Programs)
+      sam_hive=$(fd SAM$ -d 1 -t f -i $regdir 2>/dev/null)
+      system_hive=$(fd SYSTEM$ -d 1 -t f -i $regdir 2>/dev/null)
+      security_hive=$(fd SECURITY$ -d 1 -t f -i $regdir 2>/dev/null)
+      software_hive=$(fd SOFTWARE$ -d 1 -t f -i $regdir 2>/dev/null)
+      amcache_hive=$(fd -t f -d 1 -i amcache.hve$ $windir/*/Programs 2>/dev/null)
       csv2XL="/opt/app/dfir-scripts/csv2XLsheet/csv2XLsheet"
-      all_users=$(fd ProgramData$ -d 1 -t d -i $mount_dir)
+      all_users=$(fd ProgramData$ -d 1 -t d -i $mount_dir 2>/dev/null)
       [ "$windir" != "" ] && echo "Windows Directory => $windir"
       [ "$winsysdir" != "" ] && echo "Windows System32 Directory => $winsysdir"     
       [ "$regdir" != "" ] && echo  "Registry Directory =>" $regdir || regdir=$mount_dir
-      [ "$evtxdir" == "2" ] && echo  "Windows Eventlog Directory =>" $evtxdir
       [ "$len_evtxdir" == 2 ] &&  evtxdir=$mount_dir
+      [ "$evtxdir" != "" ] && echo  "Windows Eventlog Directory =>" $evtxdir
       [ "$user_dir" != "" ] && echo "Users Dir =>" $user_dir
       [ "$user_names" != "" ] && echo "Users Names => ${user_names[@]}"
 }
@@ -265,8 +267,8 @@ function set_windir(){
 function get_computer_name(){
    [ "$comp_name" == "" ] && [ "$system_hive" ] && \
    comp_name=$(reglookup -H -p /ControlSet001/Control/ComputerName/ComputerName/ComputerName "$system_hive" |awk -F',' '{print $3}')
-   [ "$comp_name" == "" ] && comp_name=$(date +'%Y-%m-%d-%H%M')
-   echo "Computer Name:" $comp_name
+   [ "$comp_name" == "" ] && comp_name=$(date +'%Y-%m-%d-%H%M') && echo "" && make_red "System Registry Not Found! Cannot Determine Computer Name!" && echo ""
+   echo "Output Directory:" $comp_name
    #cleanup and create a new new temp file to hold regripper output
    rm /tmp/$comp_name.* 2>/dev/null
    tempfile=$(mktemp /tmp/$comp_name.XXXXXXXX)
@@ -278,7 +280,7 @@ make_green "Creating Output Directories"
 triage_dirs=("All_Slicers" "All_Summary" "Application_Execution/Amcache" "Application_Execution/Bam" "Application_Execution/Jumplist" \
 "Application_Execution/PCA" "Application_Execution/Prefetch" "Application_Execution/SRUM" "Application_Execution/Shimcache" "Application_Execution/Registry_AutoStart" \
 "Application_Execution/lolbas" "Artifact" "Persistence/BITS" "Persistence/ScheduledTasks" "Persistence/Services" "Persistence/Registry" "Browser_Activity" \
-"File_System/Deleted_Files" "File_Access/LNK" "File_Access/ShellBags" "File_Access/Windows_Index" "File_Access/Registry_MRU" "File_System/AlternateDataStreams" "File_System/LogFile" \
+"File_System/Deleted_Files" "File_Access/LNK" "File_Access/ShellBags" "File_Access/Windows_Index" "File_Access/Registry_MRU" "File_System/AlternateDataStreams" \
 "File_System/MFT" "File_System/USNJRNL" "File_System/Volatile" "Installed_Software" "Network_Info/UserAccessLog" "Registry_Settings/CLSID" "/Registry_Settings/Audit_Policy/" \
 "Regripper/Software" "Regripper/System" "Regripper/Security" "Regripper/Sam" "User_Account_Info/Sam" "Scripting/PowerShell" "Scripting/WMI" "Sigma_Alerts" \
 "Timeline/TLN" "Timeline/WinActivitiesCache" "USB" "User_Account_Info" "WindowsEventLogs" "WindowsEventLogs/RDP")
@@ -458,13 +460,12 @@ SHA256: 557D9A03D5BECE1EFDA0E1080DFA5804FDA6D3C7A91A874AF9AE81D8FC3ABCB0"
 
 ##############ACQUISITION FUNCTIONS############################
 
-#Check Windows Event Logs Size
 function select_parsers(){
       echo ""
       echo "Enter as comma separated values
       "
       echo "Available Parsers
-mft,usnjrnl,registry,regmerge,lnks,evtx,amcache,prefetch,shimcache,shellbags,ntlm_hash,objects_data,jobs,recbin,srum,browser,winindex,logfile,services,current.mdb,bits,winactivities,pca,bam,lolbas
+mft,usnjrnl,registry,regmerge,lnks,evtx,amcache,prefetch,shimcache,shellbags,ntlm_hash,recbin,srum,browser,winindex,services,current.mdb,bits,winactivities,pca,bam,lolbas
 "
 make_red "SELECT PARSERS TO RUN"
 echo "Enter to select all parsers"
@@ -478,18 +479,15 @@ echo "Enter to select all parsers"
       cust_lnk=$(echo $parsers|grep -i lnks)
       cust_shim=$(echo $parsers|grep -i shimcache)
       cust_bamdam=$(echo $parsers|grep -i bam)
-      cust_evtx=$(echo $parsers|grep -i evtx)
       cust_usrc=$(echo $parsers|grep -i usrclass)
       cust_amc=$(echo $parsers|grep -i amcache)
       cust_pf=$(echo $parsers|grep -i prefetch)
       cust_hash=$(echo $parsers|grep -i ntlm_hash)
-      cust_wmi=$(echo $parsers|grep -i objects_data)
       cust_job=$(echo $parsers|grep -i jobs)
       cust_rbin=$(echo $parsers|grep -i recbin)
       cust_srum=$(echo $parsers|grep -i srum)
       cust_brow=$(echo $parsers|grep -i browser)
       cust_wini=$(echo $parsers|grep -i winindex)
-      cust_log=$(echo $parsers|grep -i logfile)
       cust_svcs=$(echo $parsers|grep -i services)
       cust_cmdb=$(echo $parsers|grep -i current.mdb)
       cust_bits=$(echo $parsers|grep -i bits)
@@ -517,7 +515,6 @@ function custom_parsers(){
            [ $cust_amc ] && extract_amcache.hve
            [ $cust_hash ] && secrets_dump
            [ $cust_pf ] && prefetch_extract
-           [ $cust_wmi ] && objects_data_extract
            [ $cust_job ] && jobs_extract
            [ $cust_rbin ] && rec_bin
            [ $cust_brow ] && browser_extract
@@ -536,28 +533,19 @@ function custom_parsers(){
            [ $cust_evtx ] && run_hayabusa
            [ $cust_evtx ] && parse_evtx_jsonl
            [ $cust_evtx ] && rdp_parse
-           [ $cust_evtx ] && zircolite_evtx
+           #[ $cust_evtx ] && zircolite_evtx
            [ $cust_evtx ] && evtx_hussar
            [ $cust_srum ] && srum_dump
            [ $cust_lol ] && scan_for_lolbas
 }
 
 ######### PROCESSING FUNCTIONS##############
-#Check Windows Event Logs Size
-function get_evtxsize(){
-    cd $mount_dir
-    du -sh $evtxdir && \
-    $evtxdir -size +500M -printf "%s bytes\t%p\n" 2>/dev/null|sort| grep . && \
-    make_red "There are some event logs larger than 500M... This could take a long time. Do you want to extract them?" && \
-    yes_no || evtx_max="-size -500M"
-}
-
-
 function recurse_source(){
     set_dsource_path
     select_parsers
     counter=0
-    fd -e vhdx -e vhd . $rmsource_path | while read -r d;
+    #fd -e vhdx -e vhd . $rmsource_path | while read -r d;
+    find "$rmsource_path" -type f -iname "*.vhd" -o -iname "*.vhdx" | while read -r d;
     do
       
       # Retry ermount -u up to 5 times with increasing sleep
@@ -569,49 +557,52 @@ function recurse_source(){
           if [ -z "$mount_status" ]; then
               echo "Unmount successful"
               break
+          elif [ "$i" == "5" ]; then
+              make_red "Unmount failed!!"
+              exit
           fi
           echo "Active mount found, retrying ($i/$retries)..."
           sleep $sleep_time
           ((sleep_time++))
       done
-      if [ -n "$mount_status" ]; then
-          echo "Failed to unmount after $retries attempts, skipping $d"
-          continue
-      fi
+      sleep 2
       case_dir=$case0_dir
-      ermount -i "$d" -t ntfs -m /mnt/image_mount -o 32256
-      echo $mount_dir echo "mount dir  is:"
-      start_time=$SECONDS
-      set_windir
-      comp_name=""
-      get_computer_name  
-      case_dir="$case_dir/$comp_name"
-      timeline_dir="$case_dir/Timeline"
-      create_triage_dir
-      eval "echo Started! "$(date) >> $case_dir/Triage-Timestamp-$comp_name.txt
-******************
-      [ $parse_all ] && parsers || custom_parsers
-      consolidate_timeline
-      #Clean-up
-      make_green "Removing Duplicates..."
-      echo "Please Wait..."
-      rm /tmp/$comp_name* 2>/dev/null
-      rm /tmp/*.dot 2>/dev/null
-      fdupes -rdN $case_dir
-      cp_registry_vals
-      make_green "The Processed Artifacts are Located in $case_dir"
-      du -sh $case_dir 2>/dev/null
-      make_green Process Complete!
-      elapsed=$(( SECONDS - start_time ))
-      eval "echo Completed! "$(date) >> $case_dir/Triage-Timestamp-$comp_name.txt
-      eval "echo Elapsed time: $(date -ud "@$elapsed" +' %H hrs %M mins %S secs')" |tee -a $case_dir/Triage-Timestamp-$comp_name.txt
-      find $case_dir -empty -delete 2>/dev/null
-      find $case_dir -empty -delete 2>/dev/null
-      read -n1 -r -p "Press any key to continue..." key
-      rm /tmp/$comp_name.* 2>/dev/null
-      ((counter++))
-      cd $case_dir
+      ermount -i /"$d" -t ntfs -m /mnt/image_mount -o 32256
+      if [ -d "/mnt/image_mount/C" ]; then
+        start_time=$SECONDS
+        set_windir
+        comp_name=""
+        get_computer_name  
+        case_dir="$case_dir/$comp_name"
+        timeline_dir="$case_dir/Timeline"
+        create_triage_dir
+        eval "echo Started! "$(date) >> $case_dir/Triage-Timestamp-$comp_name.txt
+        #******************
+        [ $parse_all ] && parsers || custom_parsers
+        consolidate_timeline
+        #Clean-up
+        make_green "Removing Duplicates..."
+        echo "Please Wait..."
+        rm /tmp/$comp_name* 2>/dev/null
+        rm /tmp/*.dot 2>/dev/null
+        fdupes -rdN $case_dir
+        cp_registry_vals
+        make_green "The Processed Artifacts are Located in $case_dir"
+        du -sh $case_dir 2>/dev/null
+        make_green $comp_name Complete!
+        elapsed=$(( SECONDS - start_time ))
+        eval "echo Completed! "$(date) >> $case_dir/Triage-Timestamp-$comp_name.txt
+        eval "echo Elapsed time: $(date -ud "@$elapsed" +' %H hrs %M mins %S secs')" |tee -a $case_dir/Triage-Timestamp-$comp_name.txt
+        find $case_dir -empty -delete 2>/dev/null
+        find $case_dir -empty -delete 2>/dev/null
+        rm /tmp/$comp_name.* 2>/dev/null
+        ((counter++))
+        cd $case_dir
+      else
+        make_red "Mount Failed $d !!"
+      fi
     done
+    make_green "Bulk Extraction Process Ended!"
 }
 
 function parsers(){
@@ -632,13 +623,11 @@ function parsers(){
            extract_amcache.hve
            secrets_dump
            prefetch_extract
-           objects_data_extract
-           jobs_extract
            rec_bin
            browser_extract
            parse_windows_index
            analyze_mft
-           # dump_mft replaced by mftecmd
+           dump_mft
            z_mftecmd
            parse_usn
            winservices
@@ -648,11 +637,11 @@ function parsers(){
            extract_winactivities
            get_ps_console_log
            evtx_dump_json
-           z_evtxecmd
+           #z_evtxecmd
            run_hayabusa
            parse_evtx_jsonl
            rdp_parse
-           zircolite_evtx
+           #zircolite_evtx
            evtx_hussar
            srum_dump
            scan_for_lolbas
@@ -897,7 +886,7 @@ function extract_amcache.hve(){
 function secrets_dump(){
   if [ -f "$sam_hive" ]; then
     make_green "Dumping Hashes and LSA Secrets (secrets_dump.py)"
-    /root/.local/pipx/venvs/impacket/bin/secretsdump.py -sam $sam_hive -system $system_hive -security $security_hive local >> $case_dir/User_Account_Info/secrets_dump-Hashes-$comp_name.txt
+    secretsdump.py -sam $sam_hive -system $system_hive -security $security_hive local >> $case_dir/User_Account_Info/secrets_dump-Hashes-$comp_name.txt
   fi
 }
 
@@ -1022,23 +1011,6 @@ function prefetch_extract() {
     fi
   fi
 }
-#Parse OBJECTS.DATA file
-objects_data_extract(){
-  objects_data=$(find $winsysdir/wbem/Repository/ 2>/dev/null| grep -i -m1 '\/objects.data$')
-  if [ -f "$objects_data" ]; then
-    cd $mount_dir
-    make_green "Parsing OBJECTS.DATA file (PyWMIPersistenceFinder.py, CCM_RUA_Finder.py)"
-    sleep 1
-    find $winsysdir/wbem -maxdepth 2 -type f 2>/dev/null  | \
-    grep -i '\/objects.data$'|sed 's|^\./||'|\
-    while read d;
-    do
-      python2 /usr/local/bin/CCM_RUA_Finder.py -i "$d" -o $case_dir/Scripting/WMI/CCM-RUA_Finder-$comp_name.csv
-      python2 /usr/local/bin/PyWMIPersistenceFinder.py "$d" >> $case_dir/Scripting/WMI/pyWMI-Persistence-Finder-$comp_name.csv
-    done
-    [ $(wc -l <$case_dir/Scripting/WMI/CCM-RUA_Finder-$comp_name.csv) -ge 2 ] || rm $case_dir/Scripting/WMI/CCM-RUA_Finder-$comp_name.csv
-  fi
-}
 
 #Extract Windows.edb Windows-Gather.db
 function parse_windows_index(){
@@ -1054,25 +1026,6 @@ function parse_windows_index(){
     index_file=$(echo "$d" |sed 's/json$/csv/')
     /opt/venv/bin/python /usr/local/src/dfir-scripts/WinEventLogs/jsonl_to_csv.py $d |tee $index_file
   done
-}
-
- #Run Jobparse.py
-function jobs_extract(){
-  cd $mount_dir
-  tasks_job=$(find  $windir -maxdepth 3 -type f | grep -i '\/tasks$'| grep -i -m1 \.job$)
-  if [ -f "$tasks_job" ]; then
-    cd $mount_dir
-    task_dir=
-    make_green "Searching for SCHEDULED TASKS (jobsparser.py)"
-    sleep 1
-    find $windir -maxdepth 2 -type d 2>/dev/null  | \
-    grep -i '\/tasks$'|sed 's|^\./||'|\
-    while read d;
-    do
-      echo "######## $d ########" >> $case_dir/Persistence/ScheduledTasks/jobsparser.py-$comp_name.csv
-      python2 /usr/local/bin/jobparser.py -d "$d" >> $case_dir/Persistence/ScheduledTasks/jobsparser.py-$comp_name.csv
-    done
-  fi
 }
 
 #Timeline recycle.bin metadata
@@ -1095,7 +1048,7 @@ function browser_extract(){
   # Run Hindsight on Users Directory
   echo "Running Hindsight on $user_dir Directory"
   mkdir -p $case_dir/Browser_Activity/tmp
-  /root/.local/pipx/venvs/pyhindsight/bin/hindsight.py -i $user_dir -o $case_dir/Browser_Activity/Hindsight -l "$case_dir/Browser_Activity/tmp/hindsight.log" --temp_dir $case_dir/Browser_Activity/tmp
+  /opt/venv/bin/hindsight.py -i $user_dir -o $case_dir/Browser_Activity/Hindsight -l "$case_dir/Browser_Activity/tmp/hindsight.log" --temp_dir $case_dir/Browser_Activity/tmp
   [ -f $case_dir/Browser_Activity/Hindsight.xlsx ] && \
   mv $case_dir/Browser_Activity/Hindsight.xlsx $case_dir/Browser_Activity/Hindsight-$comp_name.xlsx
 
@@ -1243,71 +1196,66 @@ extract_PCA(){
 }
 
 # Extract WindowsEvent Logs to jsonl
-function evtx_dump_json() {
+function evtx_dump_json(){
   if [ "$evtxdir" ]; then
-    cd "$mount_dir" || exit
+    cd $mount_dir
     make_green "Dumping Windows Event Logs to jsonl (evtx_dump)"
     sleep 1
     mkdir -p "$case_dir/WindowsEventLogs/evtx_dump_$comp_name"
-
-    # Find .evtx files and process them in parallel
-    find "$evtxdir" -type f 2>/dev/null -size +70k $evtx_max -name '*.evtx' | \
-    parallel -j 4 '
-      evtx_file=$(basename {})
+    find $evtxdir -type f 2>/dev/null -size +70k $evtx_max -name '*.evtx' | \
+    grep -vi Archive | \
+    while read d;
+    do
+      evtx_file=$(basename "$d")
       echo "Dumping $evtx_file to jsonl"
-      evtx_dump {} --validate-checksums -o jsonl -f "'"$case_dir/WindowsEventLogs/evtx_dump_$comp_name"'/$evtx_file-'"$comp_name"'.jsonl"
-    '
+      time evtx_dump "$d" --validate-checksums -t 1 -o jsonl -f "$case_dir/WindowsEventLogs/evtx_dump_$comp_name/$evtx_file-$comp_name.jsonl"
+    done
   fi
 }
 
-function evtx_hussar() {
+function evtx_hussar(){
   if [ "$evtxdir" ]; then
-    mkdir -p "$case_dir/WindowsEventLogs/EvtxHussar_$comp_name"
-    cd /usr/local/src/EvtxHussar/ || exit
-
-    # Find .evtx files and process them in parallel
-    find "$evtxdir" -type f -name '*.evtx' | \
-    parallel -j 4 '
-      evtx_file=$(basename {})
-      echo "Processing $evtx_file with EvtxHussar"
-      ./EvtxHussar -x -m /usr/local/src/EvtxHussar/maps -t /usr/local/src/EvtxHussar/templates {} -o "'"$case_dir/WindowsEventLogs/EvtxHussar_$comp_name"'/$evtx_file"
-    '
+        mkdir -p "$case_dir/WindowsEventLogs/EvtxHussar_$comp_name"
+    cd /usr/local/src/EvtxHussar/
+    find $evtxdir -type f |grep -Ei system.evtx\|security.evtx\|firewall\|defender|while read d; \
+    do
+    ./EvtxHussar -m /usr/local/src/EvtxHussar/maps -t /usr/local/src/EvtxHussar/templates "$d" -o $case_dir/WindowsEventLogs/EvtxHussar_$comp_name;done
   fi
-  sleep 3
 }
+
 
 function run_hayabusa(){
   if [ "$evtxdir" ]; then
     cd $evtxdir
     make_green "Scanning for Sigma Alerts in EVTX files (Hayabusa)"
-    mkdir -p "$case_dir/WindowsEventLogs/Hayabusa_$comp_name"
+    mkdir -p "$case_dir/Sigma_Alerts/Hayabusa_$comp_name"
     cd /opt/app/Hayabusa
-    hayabusa json-timeline -N --no-wizard -d $evtxdir -L -o  $case_dir/WindowsEventLogs/Hayabusa_$comp_name/Hayabusa-$comp_name.jsonl
+    hayabusa json-timeline -N --no-wizard  -p all-field-info-verbose --disable-abbreviations -d $evtxdir -L -o  $case_dir/Sigma_Alerts/Hayabusa-$comp_name.jsonl
     sleep .5
   fi
-  if [ -f $case_dir/WindowsEventLogs/Hayabusa_$comp_name/Hayabusa-$comp_name.jsonl ]; then
+  if [ -f $case_dir/Sigma_Alerts/Hayabusa-$comp_name.jsonl ]; then
    #Summary of Hayabusa Sigma Scan
-   cat $case_dir/WindowsEventLogs/Hayabusa_$comp_name/Hayabusa-$comp_name.jsonl | \
+   cat $case_dir/Sigma_Alerts/Hayabusa-$comp_name.jsonl | \
    jq 'select (.Level != "info" )| "\(.Level),\(.Computer),\(.RuleTitle),\(.EventID),\(.Channel)"'|sort |uniq -c|sort -rn|sed 's/ "/,/g'|sed 's/"$//g' | \
    tee $case_dir/Sigma_Alerts/Hayabusa-Count-$comp_name.csv && sed -i '1i Count,Level,Computer,RuleTitle,EventID,Channel' $case_dir/Sigma_Alerts/Hayabusa-Count-$comp_name.csv
    # Critical, High and Medium Alerts from Hayabusa
-   cat $case_dir/WindowsEventLogs/Hayabusa_$comp_name/Hayabusa-$comp_name.jsonl | \
+   cat $case_dir/Sigma_Alerts/Hayabusa-$comp_name.jsonl | \
    jq 'select (.Level == "crit" ) | "\(.Timestamp),\(.EventID),\(.Level),\(.Computer),\(.RuleTitle),\(.Channel)"' | sort|sed 's/^"//'|sed 's/"$//' | \
    tee $case_dir/Sigma_Alerts/Hayabusa-AlertsDetail-$comp_name.csv
 
-   cat $case_dir/WindowsEventLogs/Hayabusa_$comp_name/Hayabusa-$comp_name.jsonl | \
+   cat $case_dir/Sigma_Alerts/Hayabusa-$comp_name.jsonl | \
    jq 'select (.Level == "high" ) | "\(.Timestamp),\(.EventID),\(.Level),\(.Computer),\(.RuleTitle),\(.Channel)"' | sort|sed 's/^"//'|sed 's/"$//'| \
    tee $case_dir/Sigma_Alerts/Hayabusa-AlertsDetail-$comp_name.csv
 
-   cat $case_dir/WindowsEventLogs/Hayabusa_$comp_name/Hayabusa-$comp_name.jsonl | \
+   cat $case_dir/Sigma_Alerts/Hayabusa-$comp_name.jsonl | \
    jq 'select (.Level == "med" ) | "\(.Timestamp),\(.EventID),\(.Level),\(.Computer),\(.RuleTitle),\(.Channel)"' | sort|sed 's/^"//'|sed 's/"$//'| \
    tee $case_dir/Sigma_Alerts/Hayabusa-AlertsDetail-$comp_name.csv
 
    [ -f "tee $case_dir/Sigma_Alerts/Hayabusa-AlertsDetail-$comp_name.txt" ] && sed -i '1i Timestamp,EventID,Level,Computer,RuleTitle,Channel' tee $case_dir/Sigma_Alerts/Hayabusa-AlertsDetail-$comp_name.csv
 
-   cat $case_dir/WindowsEventLogs/Hayabusa_$comp_name/Hayabusa-$comp_name.jsonl | \
-   jq 'select(.Level != "info")|",\(.Timestamp |.[:10]),\(.EventID),\(.Level),\(.Computer),\(.RuleTitle),\(.Channel)"' -r|sort |uniq -c|sort -rn|sed 's/ ,/,/g' | \
-   tee $case_dir/Sigma_Alerts/Hayabusa-Alerts-byDate-$comp_name.csv
+   cat $case_dir/Sigma_Alerts/Hayabusa-$comp_name.jsonl | \
+   jq 'select(.Level != "info")|",\(.Timestamp |.[:10]),\(.EventID),\(.Level),\(.Computer),\(.RuleTitle),\(.Channel),\(.AllFieldInfo)"' |sed 's/ ,/,/g' | \
+   tee $case_dir/Sigma_Alerts/Hayabusa-Alerts-All-Fields-byDate-$comp_name.csv
    [ -f "$case_dir/Sigma_Alerts/Hayabusa-Alerts-byDate-$comp_name.csv" ] && sed -i '1i Count,Date,EventID,Level,Computer,RuleTitle,Channel' $case_dir/Sigma_Alerts/Hayabusa-Alerts-byDate-$comp_name.csv
  fi
 }
@@ -1481,23 +1429,23 @@ function rdp_parse(){
   fi
 }
 
-function zircolite_evtx(){
-  if [ -d "$case_dir/WindowsEventLogs/evtx_dump_$comp_name/" ]; then
-    make_green "Scanning for Sigma Alerts in EVTX files (Zircolite)"
-    zpath="/opt/app/Zircolite"
-    find $case_dir/WindowsEventLogs/evtx_dump_$comp_name/ -type f 2>/dev/null | \
-    grep -Ei sysmon.evtx.jsonl$\|\/Security.evtx.jsonl$\|\/Application.evtx.jsonl$\|\/System.evtx.jsonl$\|PowerShell\|Defender\|DNS\|Windows-Bits\|Windows-Smb\|TaskScheduler\|firewall| \
-    while read d;
-    do
-      evtx_jsonl=$(echo "$d" |awk -F"evtx_dump_$comp_name/" '{print $NF}')
-      /opt/venv/bin/python $zpath/zircolite.py -j -e "$d" -r $zpath/rules/rules_windows_generic_full.json -c $zpath/config/fieldMappings.json --csv -o $case_dir/Sigma_Alerts/Zircolite-"$evtx_jsonl"-$comp_name.csv -l $case_dir/Sigma_Alerts/Zircolite-log-$comp_name.txt
-    done
-    sleep .5
-    header="COUNT,LEVEL,TITLE,DESCRIPTION"
-    result=$(cat $case_dir/Sigma_Alerts/*.json 2>/dev/null |jq -r '.[]|select(.title!="")|"\(.count),\(.rule_level),\(.title),\(.description)"'|grep -v null,null,null|sort -rn)
-    [ "$result" != "" ] && printf "%s\n%s"  ${header} "${result}"|column -t -s "," >> $case_dir/All_Summary/Zircolite-stats-"$comp_name".csv
-  fi
-}
+#function zircolite_evtx(){
+#  if [ -d "$case_dir/WindowsEventLogs/evtx_dump_$comp_name/" ]; then
+#    make_green "Scanning for Sigma Alerts in EVTX files (Zircolite)"
+#    zpath="/opt/app/Zircolite"
+#    find $case_dir/WindowsEventLogs/evtx_dump_$comp_name/ -type f 2>/dev/null | \
+#    grep -Ei sysmon.evtx.jsonl$\|\/Security.evtx.jsonl$\|\/Application.evtx.jsonl$\|\/System.evtx.jsonl$\|PowerShell\|Defender\|DNS\|Windows-Bits\|Windows-Smb\|TaskScheduler\|firewall| \
+#    while read d;
+#    do
+#      evtx_jsonl=$(echo "$d" |awk -F"evtx_dump_$comp_name/" '{print $NF}')
+#      /opt/venv/bin/python $zpath/zircolite.py -j -e "$d" -r $zpath/rules/rules_windows_generic_full.json -c $zpath/config/fieldMappings.json --csv -o #$case_dir/Sigma_Alerts/Zircolite-"$evtx_jsonl"-$comp_name.csv -l $case_dir/Sigma_Alerts/Zircolite-log-$comp_name.txt
+#    done
+#    sleep .5
+#    header="COUNT,LEVEL,TITLE,DESCRIPTION"
+#    result=$(cat $case_dir/Sigma_Alerts/*.json 2>/dev/null |jq -r '.[]|select(.title!="")|"\(.count),\(.rule_level),\(.title),\(.description)"'|grep -v null,null,null|sort -rn)
+#    [ "$result" != "" ] && printf "%s\n%s"  ${header} "${result}"|column -t -s "," >> $case_dir/All_Summary/Zircolite-stats-"$comp_name".csv
+#  fi
+#}
 
 #Extract MFT to body file and then to TLN and csv files
 function analyze_mft(){
@@ -1551,15 +1499,6 @@ function dump_mft(){
   fi
 }
 
-function parse_log_file(){
-  cd $mount_dir
-  if [ -f "\$LogFile" ]; then
-    make_green "Extracting \$LogFile (ntfs_parser)
-    Standby..."
-    time /opt/venv/bin/ntfs_parser --log \$MFT \$LogFile $case_dir/File_System/LogFile/ntfs_parser-LogFile-$comp_name.txt
-  fi
-}
-
 #Consolidating TLN Output and consolidating timelines
 function cp_registry_vals(){
   fd . -e txt  $case_dir/Regripper |grep -i winver |while read d; do cp "$d" $case_dir/;done
@@ -1571,7 +1510,7 @@ function cp_registry_vals(){
   fd . -e txt  $case_dir/Regripper |grep -Ei cmd_shell\|appcertdll\|dcom  |while read d; do cp "$d" $case_dir/Registry_Settings/ ;done
   fd . -e txt  $case_dir/Regripper |grep -i clsid |while read d; do cp $d $case_dir/Registry_Settings/CLSID/ 2>>/dev/null;done
   cp $case_dir/Regripper/Security/Audit-Policy-$comp_name.txt $case_dir/Registry_Settings/Audit_Policy/Audit-Policy-$comp_name.txt 2>>/dev/null
-  cp $case_dir/User_Account_Info/Sam/SAM-$comp_name.txt $case_dir/Regripper/Sam/SAM-$comp_name.txt
+  cp $case_dir/User_Account_Info/Sam/SAM-$comp_name.txt $case_dir/Regripper/Sam/SAM-$comp_name.txt 2>/dev/null
   fd . -e txt  $case_dir/Regripper |grep -iE logons\|profilelist\|lastloggedon\|profiler |while read d; do cp $d $case_dir/User_Account_Info/ 2>>/dev/null;done
   fd . -e txt  $case_dir/Regripper |grep -iE pslogging\|execpolicy\|powershellcore |while read d; do cp $d  $case_dir/Scripting/PowerShell/ 2>>/dev/null;done
   fd . -e txt  $case_dir/Regripper |grep -iE portdev\|usb\|wpdusenum\|devclass |while read d; do cp $d  $case_dir/USB 2>>/dev/null;done
@@ -1787,7 +1726,7 @@ function z_wxtcmd(){
 
 #EvtXCmd
 function z_evtxecmd(){
-dotnet /opt/zimmermantools/net9/EvtxeCmd/EvtxECmd.dll --csvf EvtxECmd_$comp_name.csv -d $evtxdir --$out_format $case_dir/WindowsEventLogs/Zimmerman
+dotnet /opt/zimmermantools/net9/EvtxeCmd/EvtxECmd.dll --jsonf EvtxECmd_$comp_name.json -d $evtxdir --$out_format $case_dir/WindowsEventLogs/Zimmerman
 }
 
 clear
