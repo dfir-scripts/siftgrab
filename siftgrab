@@ -100,13 +100,12 @@ echo "Start Siftgrab Docker using the \"-v\" option to access the host's images 
             ;;
         #Menu Selection: Extract artifact collections from multiple sources (Kape, CyLR) using siftgrab parser collection
         3)clear;
-          make_red "Enter path to directory containing Kape or Cylr **VHD or VHDX** files"
+          make_green "Enter path to directory containing Kape or Cylr **VHD or VHDX** files"
           out_format=csv
           mount_dir=/mnt/image_mount/C
           set_rmsource_path
           recurse_source
           read -n1 -r -p "Press any key to continue..." key
-          ermount -u
           show_menu;
           ;;
         #Menu Selection:  Acquire Data from Mounted Disks or Image Excerpts
@@ -201,11 +200,10 @@ function set_msource_path(){
 }
 
 function set_rmsource_path(){
-      default_rmsource="/mnt/"
       echo ""
       make_red "SET DATA SOURCE"
       echo "Set Path or Enter to Accept Default:"
-      read -e -p "" -i $default_rmsource rmsource_path
+      read -e -p "" rmsource_path
       [ ! -d "${rmsource_path}" ] && make_red "Path does not exist.." && sleep 1 && clear && show_menu
       rmsource_path=$(echo $rmsource_path |sed 's_.*_&\/_'|sed 's|//*|/|g')
       echo "VHD(X) Search Source Path=>" $rmsource_path
@@ -465,7 +463,7 @@ function select_parsers(){
       echo "Enter as comma separated values
       "
       echo "Available Parsers
-mft,usnjrnl,registry,regmerge,lnks,evtx,amcache,prefetch,shimcache,shellbags,ntlm_hash,recbin,srum,browser,winindex,services,current.mdb,bits,winactivities,pca,bam,lolbas
+mft,usnjrnl,registry,regmerge,lnks,evtx,amcache,prefetch,shimcache,shellbags,ntlm_hash,recbin,srum,browser,winindex,services,current.mdb,bits,winactivities,pca,bam
 "
 make_red "SELECT PARSERS TO RUN"
 echo "Enter to select all parsers"
@@ -494,7 +492,6 @@ echo "Enter to select all parsers"
       cust_winact=$(echo $parsers|grep -i winactivities)
       cust_pca=$(echo $parsers|grep -i pca)
       cust_evtx=$(echo $parsers|grep -i evtx)
-      cust_lol=$(echo $parsers|grep -i lolbas)
 }
 
 function custom_parsers(){
@@ -536,19 +533,11 @@ function custom_parsers(){
            #[ $cust_evtx ] && zircolite_evtx
            [ $cust_evtx ] && evtx_hussar
            [ $cust_srum ] && srum_dump
-           [ $cust_lol ] && scan_for_lolbas
 }
 
-######### PROCESSING FUNCTIONS##############
-function recurse_source(){
-    set_dsource_path
-    select_parsers
-    counter=0
-    #fd -e vhdx -e vhd . $rmsource_path | while read -r d;
-    find "$rmsource_path" -type f -iname "*.vhd" -o -iname "*.vhdx" | while read -r d;
-    do
-      
+function mount_vhd(){
       # Retry ermount -u up to 5 times with increasing sleep
+      #local vhd_file="$1"
       retries=5
       sleep_time=1
       for ((i=1; i<=retries; i++)); do
@@ -568,7 +557,68 @@ function recurse_source(){
       sleep 2
       case_dir=$case0_dir
       ermount -i /"$d" -t ntfs -m /mnt/image_mount -o 32256
-      if [ -d "/mnt/image_mount/C" ]; then
+      if [ ! -d "/mnt/image_mount/C" ]; then
+        make_red "Mount Failed $d !!"
+      fi
+}
+
+function rprocess(){
+    if [ -d "/mnt/image_mount/C" ]; then
+      start_time=$SECONDS
+      set_windir
+      comp_name=""
+      get_computer_name  
+      case_dir="$case_dir/$comp_name"
+      timeline_dir="$case_dir/Timeline"
+      create_triage_dir
+      eval "echo Started! "$(date) >> $case_dir/Triage-Timestamp-$comp_name.txt
+      #******************
+      [ $parse_all ] && parsers || custom_parsers
+      consolidate_timeline
+      #Clean-up
+      make_green "Removing Duplicates..."
+      echo "Please Wait..."
+      rm /tmp/$comp_name* 2>/dev/null
+      rm /tmp/*.dot 2>/dev/null
+      fdupes -rdN $case_dir
+      cp_registry_vals
+      make_green "The Processed Artifacts are Located in $case_dir"
+      du -sh $case_dir 2>/dev/null
+      make_green $comp_name Complete!
+      elapsed=$(( SECONDS - start_time ))
+      eval "echo Completed! "$(date) >> $case_dir/Triage-Timestamp-$comp_name.txt
+      eval "echo Elapsed time: $(date -ud "@$elapsed" +' %H hrs %M mins %S secs')" |tee -a $case_dir/Triage-Timestamp-$comp_name.txt
+      find $case_dir -empty -delete 2>/dev/null
+      find $case_dir -empty -delete 2>/dev/null
+      rm /tmp/$comp_name.* 2>/dev/null
+      ((counter++))
+      cd $case_dir
+    else
+      mount_err=$(basename "$d") 
+      echo "Mount Failed $d !!" | tee $case_dir/"$mount_err.txt"
+    fi
+}
+######### PROCESSING FUNCTIONS##############
+function recurse_source() {
+    set_dsource_path
+    select_parsers
+    counter=0
+    vhd_files=$(find "$rmsource_path" -type f -iname "*.vhd" -o -iname "*.vhdx")
+    if [ -n "$vhd_files" ]; then
+        for d in $vhd_files; do
+            mount_vhd "$d"
+            if [ -d "/mnt/image_mount/C" ]; then
+              rprocess
+            fi
+        done
+        # Wait for all background processes to complete
+        wait
+    fi
+    make_green "Recursive Extraction Complete!"
+}
+
+function rprocess() {
+      if [ $(echo $mount_dir |grep \/C$) ];then
         start_time=$SECONDS
         set_windir
         comp_name=""
@@ -576,33 +626,39 @@ function recurse_source(){
         case_dir="$case_dir/$comp_name"
         timeline_dir="$case_dir/Timeline"
         create_triage_dir
-        eval "echo Started! "$(date) >> $case_dir/Triage-Timestamp-$comp_name.txt
+        
+        eval "echo Started! $(date)" >> "$case_dir/Triage-Timestamp-$comp_name.txt"
+        
         #******************
-        [ $parse_all ] && parsers || custom_parsers
+        [ "$parse_all" ] && parsers || custom_parsers
         consolidate_timeline
+        
         #Clean-up
         make_green "Removing Duplicates..."
         echo "Please Wait..."
-        rm /tmp/$comp_name* 2>/dev/null
+        rm /tmp/"$comp_name"* 2>/dev/null
         rm /tmp/*.dot 2>/dev/null
-        fdupes -rdN $case_dir
+        fdupes -rdN "$case_dir"
         cp_registry_vals
+        
         make_green "The Processed Artifacts are Located in $case_dir"
-        du -sh $case_dir 2>/dev/null
-        make_green $comp_name Complete!
+        du -sh "$case_dir" 2>/dev/null
+        make_green "$comp_name Complete!"
+        
         elapsed=$(( SECONDS - start_time ))
-        eval "echo Completed! "$(date) >> $case_dir/Triage-Timestamp-$comp_name.txt
-        eval "echo Elapsed time: $(date -ud "@$elapsed" +' %H hrs %M mins %S secs')" |tee -a $case_dir/Triage-Timestamp-$comp_name.txt
-        find $case_dir -empty -delete 2>/dev/null
-        find $case_dir -empty -delete 2>/dev/null
-        rm /tmp/$comp_name.* 2>/dev/null
+        eval "echo Completed! $(date)" >> "$case_dir/Triage-Timestamp-$comp_name.txt"
+        eval "echo Elapsed time: $(date -ud "@$elapsed" +' %H hrs %M mins %S secs')" | tee -a "$case_dir/Triage-Timestamp-$comp_name.txt"
+        
+        find "$case_dir" -empty -delete 2>/dev/null
+        find "$case_dir" -empty -delete 2>/dev/null
+        rm /tmp/"$comp_name".* 2>/dev/null
+        
         ((counter++))
-        cd $case_dir
-      else
-        make_red "Mount Failed $d !!"
-      fi
-    done
-    make_green "Bulk Extraction Process Ended!"
+        cd "$case_dir"
+    else
+        mount_err=$(basename "$vhd_file")
+        echo "Mount Failed $vhd_file !!" | tee "$case_dir/$mount_err.txt"
+    fi
 }
 
 function parsers(){
@@ -1095,15 +1151,11 @@ function srum_dump(){
 }
 
 function kstrike_current.mdb(){
-  current_mdb=$(find $winsysdir/[L,l]*[S,s]/[S,s][U,u][M,m] -type f -iname "*\\.mdb" 2>/dev/null)
+  current_mdb=$(find $winsysdir/[L,l]*[S,s]/[S,s][U,u][M,m] -type f 2>/dev/null | grep -i current.mdb$)
   if [ -f "$current_mdb" ]; then
     cd $mount_dir
     make_green "Parsing UserAccessLog (Current.mdb) with KStrike.py"
-    find $winsysdir/[L,l]*[S,s]/[S,s][U,u][M,m] -type f -iname "*\\.mdb" 2>/dev/null |while read d; 
-    do
-      /opt/venv/bin/python /opt/app/KStrike/KStrike.py "$d" 2>/dev/null \
-      >> $case_dir/Network_Info/UserAccessLog/Kstrike-$comp_name.txt
-    done
+    /opt/venv/bin/python /opt/app/KStrike/KStrike.py "$current_mdb" > $case_dir/Network_Info/UserAccessLog/Kstrike-$comp_name.txt
   fi
 }
 
