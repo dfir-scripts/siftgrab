@@ -537,7 +537,6 @@ function custom_parsers(){
 
 function mount_vhd(){
       # Retry ermount -u up to 5 times with increasing sleep
-      #local vhd_file="$1"
       retries=5
       sleep_time=1
       for ((i=1; i<=retries; i++)); do
@@ -545,6 +544,7 @@ function mount_vhd(){
           mount_status=$(sudo ermount -s | grep 'Active')
           if [ -z "$mount_status" ]; then
               echo "Unmount successful"
+              target_dir=""
               break
           elif [ "$i" == "5" ]; then
               make_red "Unmount failed!!"
@@ -558,12 +558,42 @@ function mount_vhd(){
       case_dir=$case0_dir
       ermount -i /"$d" -t ntfs -m /mnt/image_mount -o 32256
       if [ ! -d "/mnt/image_mount/C" ]; then
-        make_red "Mount Failed $d !!"
+        make_red "Mount Failed $d or does image does not contain a KAPE or CyLR image"
+      fi
+}
+
+function mount_zip(){
+    # Retry ermount -u up to 5 times with increasing sleep
+    retries=5
+    sleep_time=1
+    for ((i=1; i<=retries; i++)); do
+          ermount -u
+        mount_status=$(sudo ermount -s | grep 'Active')
+          if [ -z "$mount_status" ]; then
+              echo "Unmount successful"
+              target_dir=/mnt/image_mount
+              break
+          elif [ "$i" == "5" ]; then
+              make_red "Unmount failed!!"
+              exit
+          fi
+          echo "Active mount found, retrying ($i/$retries)..."
+          sleep $sleep_time
+          ((sleep_time++))
+      done
+      sleep 2
+    case_dir=$case0_dir
+    # Mount the ZIP file using fuse-zip
+    fuse-zip "$d" /mnt/image_mount
+    # Check if mount was successful by verifying mount point has content
+      target_dir=$(find /mnt/image_mount/ -maxdepth 2 -mindepth 2 -iname c)
+      if [ ! -d $target_dir ]; then
+        make_red "Mount Failed $d or does not contain a KAPE or CyLR image"
       fi
 }
 
 function rprocess(){
-    if [ -d "/mnt/image_mount/C" ]; then
+    if [ -d $target_dir ]; then
       start_time=$SECONDS
       set_windir
       comp_name=""
@@ -598,26 +628,49 @@ function rprocess(){
       echo "Mount Failed $d !!" | tee $case_dir/"$mount_err.txt"
     fi
 }
+
 ######### PROCESSING FUNCTIONS##############
-function recurse_source() {
-    set_dsource_path
-    select_parsers
-    counter=0
-    vhd_files=$(find "$rmsource_path" -type f -iname "*.vhd" -o -iname "*.vhdx")
-    if [ -n "$vhd_files" ]; then
-        for d in $vhd_files; do
-            mount_vhd "$d"
-            if [ -d "/mnt/image_mount/C" ]; then
-              rprocess
-            fi
-        done
-        # Wait for all background processes to complete
-        wait
-    fi
+function recurse_source(){
+  set_dsource_path
+  select_parsers
+  counter=0
+  vhd_files=$(find "$rmsource_path" -maxdepth 2 -type f -iname "*.vhd" -o -iname "*.vhdx" |grep -E vhd$\|vhdx)
+  zip_files=$(find "$rmsource_path" -maxdepth 2 -type f -iname "*.zip" |grep zip$)
+  if [ -n "$vhd_files" ]; then
+    for d in $vhd_files; do
+      mount_vhd "$d"
+      if [ -d "/mnt/image_mount/C" ]; then
+        rprocess
+      fi
+    done
+    # Wait for all background processes to complete
+    wait
+  else
+  if [ -n "$zip_files" ]; then
+    for d in $zip_files; do
+      mount_zip "$d"
+      find /mnt/image_mount -maxdepth 2 -type d -iname c |while read dir;
+      do
+        case_dir=$case0_dir
+        mount_dir="$dir"
+           rprocess "$mount_dir"
+      done
+    done
+    # Wait for all background processes to complete
+    wait
+  else
+    find "$rmsource_path" -maxdepth 2 -type d -iname c |while read dir;
+    do
+      case_dir=$case0_dir
+      mount_dir="$dir"
+       rprocess "$mount_dir"
+    done
+  fi
+  fi
     make_green "Recursive Extraction Complete!"
 }
 
-function rprocess() {
+function rprocess(){
       if [ $(echo $mount_dir |grep \/C$) ];then
         start_time=$SECONDS
         set_windir
