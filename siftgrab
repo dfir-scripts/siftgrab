@@ -526,7 +526,7 @@ function mount_vhd(){
       sleep_time=1
       for ((i=1; i<=retries; i++)); do
           ermount -u
-          mount_status=$(sudo ermount -s | grep 'Active')
+          mount_status=$(ermount -s | grep 'Active')
           if [ -z "$mount_status" ]; then
               echo "Unmount successful"
               target_dir=""
@@ -553,7 +553,7 @@ function mount_zip(){
     sleep_time=1
     for ((i=1; i<=retries; i++)); do
           ermount -u
-        mount_status=$(sudo ermount -s | grep 'Active')
+        mount_status=$(ermount -s | grep 'Active')
           if [ -z "$mount_status" ]; then
               echo "Unmount successful"
               target_dir=/mnt/image_mount
