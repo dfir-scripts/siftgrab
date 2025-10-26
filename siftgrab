@@ -28,7 +28,7 @@ function show_menu(){
     GREEN=`echo "\033[0;32m"`
     NORMAL=`echo "\033[m"`
     RED=`echo "\033[31m"`
-    echo -e "${GREEN} dfir-scripts 2025_9${NORMAL}" 
+    echo -e "${GREEN} dfir-scripts 2025_11${NORMAL}" 
     echo -e "********************************************************"
     echo -e "${GRAY} Mount and Extract Information From Windows Disk Images${NORMAL}"
     echo -e "********************************************************"
