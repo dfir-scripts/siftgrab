@@ -32,15 +32,13 @@ function show_menu(){
     echo -e "********************************************************"
     echo -e "${GRAY} Mount and Extract Information From Windows Disk Images${NORMAL}"
     echo -e "********************************************************"
-    echo -e "**  1) ${GREEN} Mount a Disk or Image with ermount
-        (E01, RAW, AFF, QCOW, VMDK, VHDX or Physical disk)${NORMAL}"
-    echo -e "**  2)${GREEN}  Process Windows Artifacts Using Available Parsers${NORMAL}"
-    echo -e "**  3)${GREEN}  Extract Artifacts from Multiple System Acquisitions (e.g. KAPE, CyLR)${NORMAL}"
-    echo -e "**  4) ${GREEN} Make a Backup Copy of Windows Artifacts from a Mounted Image(s)${NORMAL}"
-    echo -e "**  5) ${GREEN} lf - Terminal File Manager${NORMAL}"
-    echo -e "**  6) ${GREEN} Terminal${NORMAL}"
-    echo -e "**  7) ${GREEN} Additional Parsers and Memory Analysis${NORMAL}"
-    echo -e "**  8)${GREEN}  Process Windows Artifacts Using Zimmerman Tools${NORMAL}"
+    echo -e "**  1)${GREEN}  Process Windows Artifacts Using Available Parsers${NORMAL}"
+    echo -e "**  2)${GREEN}  Extract Artifacts from Multiple System Acquisitions (e.g. KAPE, CyLR)${NORMAL}"
+    echo -e "**  3) ${GREEN} Make a Backup Copy of Windows Artifacts from a Mounted Image(s)${NORMAL}"
+    echo -e "**  4) ${GREEN} lf - Terminal File Manager${NORMAL}"
+    echo -e "**  5) ${GREEN} Terminal${NORMAL}"
+    echo -e "**  6) ${GREEN} Additional Parsers and Memory Analysis${NORMAL}"
+    echo -e "**  7)${GREEN}  Process Windows Artifacts Using Zimmerman Tools${NORMAL}"
     echo ""
     echo -e "Select a menu option number or ${RED}enter to exit. ${NORMAL}"
     read opt
@@ -50,21 +48,8 @@ while [ opt != '' ]
             exit;
     else
         case $opt in
-        #Menu Selection: Mount disk image using /usr/local/bin/ermount
-        1) clear
-           #check for docker
-           [ -f /.dockerenv ] && make_red "Siftgrab is running from Docker!!" && \
-echo "Start Siftgrab Docker using the \"-v\" option to access the host's images and disks
-" && make_green "(e.g.  sudo docker run -it -v /media:/media -v /mnt:/mnt -v /cases:/cases  dfirscripts/siftgrab)
-" && show_menu;
-           /usr/local/bin/ermount -h
-           read -n1 -r -p "Press any key to continue..." key
-           /usr/local/bin/ermount
-           show_menu;
-           ;;
-
         #Menu Selection: Process artifacts using siftgrab parser collection
-        2) clear;
+        1) clear;
            make_green "Process Artifacts for Triage"
            set_msource_path
            set_windir
@@ -99,7 +84,7 @@ echo "Start Siftgrab Docker using the \"-v\" option to access the host's images 
            show_menu;
             ;;
         #Menu Selection: Extract artifact collections from multiple sources (Kape, CyLR) using siftgrab parser collection
-        3)clear;
+        2)clear;
           make_green "Enter path to directory containing Kape or Cylr **VHD or VHDX** files"
           out_format=csv
           mount_dir=/mnt/image_mount/C
@@ -109,32 +94,32 @@ echo "Start Siftgrab Docker using the \"-v\" option to access the host's images 
           show_menu;
           ;;
         #Menu Selection:  Acquire Data from Mounted Disks or Image Excerpts
-        4) clear;
+        3) clear;
            /opt/app/dfir-scripts/shellscripts/grab-winfiles.sh
            read -n1 -r -p "Press any key to continue..." key
            clear;
            show_menu;
             ;;
         #Menu Selection:Lf File Browser
-        5) clear;
+        4) clear;
            cd /cases
            lf
            clear;
            show_menu;
             ;;
         #Menu Selection:terminal
-        6) clear;
+        5) clear;
            cd /cases
            bash
            show_menu;
             ;;
         # Carving and Additional Parsers
-        7) carving_submenu
+        6) carving_submenu
             clear
             show_menu;
             ;;
 #***************************************
-        8) clear;
+        7) clear;
            make_green "Process Artifacts using Zimmerman Tools"
            set_msource_path
            set_windir
@@ -634,20 +619,18 @@ function recurse_source(){
   set_dsource_path
   select_parsers
   counter=0
-  vhd_files=$(find "$rmsource_path" -maxdepth 2 -type f -iname "*.vhd" -o -iname "*.vhdx" |grep -E vhd$\|vhdx)
+  vhd_files=$(find "$rmsource_path" -maxdepth 2 -type f \( -iname "*.vhd" -o -iname "*.vhdx" \))
   zip_files=$(find "$rmsource_path" -maxdepth 2 -type f -iname "*.zip" |grep zip$)
-  if [ -n "$vhd_files" ]; then
-    for d in $vhd_files; do
+  if [ "$vhd_files" != "" ]; then
+    find "$rmsource_path" -maxdepth 2 -type f \( -iname "*.vhd" -o -iname "*.vhdx" \) |while read d;
+    do
       mount_vhd "$d"
       if [ -d "/mnt/image_mount/C" ]; then
         rprocess
       fi
     done
-    # Wait for all background processes to complete
-    wait
-  else
-  if [ -n "$zip_files" ]; then
-    for d in $zip_files; do
+  elif [ "$zip_files" != "" ]; then
+    find "$rmsource_path" -maxdepth 2 -type f -iname "*.zip" |grep zip$|while read d; do
       mount_zip "$d"
       find /mnt/image_mount -maxdepth 2 -type d -iname c |while read dir;
       do
@@ -656,8 +639,6 @@ function recurse_source(){
            rprocess "$mount_dir"
       done
     done
-    # Wait for all background processes to complete
-    wait
   else
     find "$rmsource_path" -maxdepth 2 -type d -iname c |while read dir;
     do
@@ -666,7 +647,7 @@ function recurse_source(){
        rprocess "$mount_dir"
     done
   fi
-  fi
+
     make_green "Recursive Extraction Complete!"
 }
 
@@ -995,7 +976,7 @@ function extract_amcache.hve(){
 function secrets_dump(){
   if [ -f "$sam_hive" ]; then
     make_green "Dumping Hashes and LSA Secrets (secrets_dump.py)"
-    secretsdump.py -sam $sam_hive -system $system_hive -security $security_hive local >> $case_dir/User_Account_Info/secrets_dump-Hashes-$comp_name.txt
+    /usr/local/bin/secretsdump.py -sam $sam_hive -system $system_hive -security $security_hive local >> $case_dir/User_Account_Info/secrets_dump-Hashes-$comp_name.txt
   fi
 }
 
