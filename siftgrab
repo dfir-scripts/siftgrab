@@ -976,7 +976,11 @@ function extract_amcache.hve(){
 function secrets_dump(){
   if [ -f "$sam_hive" ]; then
     make_green "Dumping Hashes and LSA Secrets (secrets_dump.py)"
-    /usr/local/bin/secretsdump.py -sam $sam_hive -system $system_hive -security $security_hive local >> $case_dir/User_Account_Info/secrets_dump-Hashes-$comp_name.txt
+    TEMP=$(mktemp -d) && \
+    cp {$sam_hive,$system_hive,$security_hive} "$TEMP/" && \
+    secretsdump.py -sam "$TEMP/SAM" -system "$TEMP/SYSTEM" -security "$TEMP/SECURITY" LOCAL \
+    >> $case_dir/User_Account_Info/secrets_dump-Hashes-$comp_name.txt && \
+    rm -rf "$TEMP" 
   fi
 }
 
