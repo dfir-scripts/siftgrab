@@ -1118,7 +1118,7 @@ function parse_windows_index(){
   while read d; 
   do
     index_file=$(echo "$d" |sed 's/json$/csv/')
-    /opt/venv/bin/python /usr/local/src/dfir-scripts/WinEventLogs/jsonl_to_csv.py $d |tee $index_file
+    /opt/venv/bin/python /usr/local/src/dfir-scripts/WinEventLogs/jsonl_to_csv.py $d > $index_file
   done
 }
 
@@ -1327,25 +1327,25 @@ function run_hayabusa(){
    #Summary of Hayabusa Sigma Scan
    cat $case_dir/Sigma_Alerts/Hayabusa-$comp_name.jsonl | \
    jq 'select (.Level != "info" )| "\(.Level),\(.Computer),\(.RuleTitle),\(.EventID),\(.Channel)"'|sort |uniq -c|sort -rn|sed 's/ "/,/g'|sed 's/"$//g' | \
-   tee $case_dir/Sigma_Alerts/Hayabusa-Count-$comp_name.csv && sed -i '1i Count,Level,Computer,RuleTitle,EventID,Channel' $case_dir/Sigma_Alerts/Hayabusa-Count-$comp_name.csv
+   > $case_dir/Sigma_Alerts/Hayabusa-Count-$comp_name.csv && sed -i '1i Count,Level,Computer,RuleTitle,EventID,Channel' $case_dir/Sigma_Alerts/Hayabusa-Count-$comp_name.csv
    # Critical, High and Medium Alerts from Hayabusa
    cat $case_dir/Sigma_Alerts/Hayabusa-$comp_name.jsonl | \
    jq 'select (.Level == "crit" ) | "\(.Timestamp),\(.EventID),\(.Level),\(.Computer),\(.RuleTitle),\(.Channel)"' | sort|sed 's/^"//'|sed 's/"$//' | \
-   tee $case_dir/Sigma_Alerts/Hayabusa-AlertsDetail-$comp_name.csv
+   > $case_dir/Sigma_Alerts/Hayabusa-AlertsDetail-$comp_name.csv
 
    cat $case_dir/Sigma_Alerts/Hayabusa-$comp_name.jsonl | \
    jq 'select (.Level == "high" ) | "\(.Timestamp),\(.EventID),\(.Level),\(.Computer),\(.RuleTitle),\(.Channel)"' | sort|sed 's/^"//'|sed 's/"$//'| \
-   tee $case_dir/Sigma_Alerts/Hayabusa-AlertsDetail-$comp_name.csv
+   > $case_dir/Sigma_Alerts/Hayabusa-AlertsDetail-$comp_name.csv
 
    cat $case_dir/Sigma_Alerts/Hayabusa-$comp_name.jsonl | \
    jq 'select (.Level == "med" ) | "\(.Timestamp),\(.EventID),\(.Level),\(.Computer),\(.RuleTitle),\(.Channel)"' | sort|sed 's/^"//'|sed 's/"$//'| \
-   tee $case_dir/Sigma_Alerts/Hayabusa-AlertsDetail-$comp_name.csv
+   > $case_dir/Sigma_Alerts/Hayabusa-AlertsDetail-$comp_name.csv
 
-   [ -f "tee $case_dir/Sigma_Alerts/Hayabusa-AlertsDetail-$comp_name.txt" ] && sed -i '1i Timestamp,EventID,Level,Computer,RuleTitle,Channel' tee $case_dir/Sigma_Alerts/Hayabusa-AlertsDetail-$comp_name.csv
+   [ -f "$case_dir/Sigma_Alerts/Hayabusa-AlertsDetail-$comp_name.txt" ] && sed -i '1i Timestamp,EventID,Level,Computer,RuleTitle,Channel' tee $case_dir/Sigma_Alerts/Hayabusa-AlertsDetail-$comp_name.csv
 
    cat $case_dir/Sigma_Alerts/Hayabusa-$comp_name.jsonl | \
    jq 'select(.Level != "info")|",\(.Timestamp |.[:10]),\(.EventID),\(.Level),\(.Computer),\(.RuleTitle),\(.Channel),\(.AllFieldInfo)"' |sed 's/ ,/,/g' | \
-   tee $case_dir/Sigma_Alerts/Hayabusa-Alerts-All-Fields-byDate-$comp_name.csv
+   > $case_dir/Sigma_Alerts/Hayabusa-Alerts-All-Fields-byDate-$comp_name.csv
    [ -f "$case_dir/Sigma_Alerts/Hayabusa-Alerts-byDate-$comp_name.csv" ] && sed -i '1i Count,Date,EventID,Level,Computer,RuleTitle,Channel' $case_dir/Sigma_Alerts/Hayabusa-Alerts-byDate-$comp_name.csv
  fi
 }
@@ -1736,11 +1736,11 @@ function z_mftecmd(){
   fi
   #Copy ADS and Unallocated files
   if [ -f "$case_dir/File_System/MFT/MFTECmd_$comp_name.csv" ]; then
-    head -n1 $case_dir/File_System/MFT/MFTECmd_$comp_name.csv | tee $case_dir/File_System/AlternateDataStreams/AlternateDataStreams-$comp_name.csv && \
-    cat $case_dir/File_System/MFT/MFTECmd_$comp_name.csv | awk -F, '$14 ~ /^(True)$/{print $0}'|tee -a $case_dir/File_System/AlternateDataStreams/MFTECmd-AlternateDataStreams-$comp_name.csv
+    head -n1 $case_dir/File_System/MFT/MFTECmd_$comp_name.csv > $case_dir/File_System/AlternateDataStreams/AlternateDataStreams-$comp_name.csv && \
+    cat $case_dir/File_System/MFT/MFTECmd_$comp_name.csv | awk -F, '$14 ~ /^(True)$/{print $0}' >> $case_dir/File_System/AlternateDataStreams/MFTECmd-AlternateDataStreams-$comp_name.csv
     cat $case_dir/File_System/AlternateDataStreams/MFTECmd-AlternateDataStreams-$comp_name.csv | grep -v "Created0x10.ADS" | \
     awk -F"," '{print $20",ADS,comp_name,,FILE Created: "$6"\\"$7}' |sed "s/comp_name/$comp_name/" >> $case_dir/File_System/AlternateDataStreams/AlternateDataStreams-$comp_name.csv
-    cat $case_dir/File_System/MFT/MFTECmd_$comp_name.csv | awk -F, '$3 ~ /^(False)$/{print $0}'|tee -a $case_dir/File_System/Deleted_Files/MFTECmd-Unallocated-$comp_name.csv
+    cat $case_dir/File_System/MFT/MFTECmd_$comp_name.csv | awk -F, '$3 ~ /^(False)$/{print $0}'>> $case_dir/File_System/Deleted_Files/MFTECmd-Unallocated-$comp_name.csv
   fi
 }
 #Extract $USNJRNL:$J using mftecmd
