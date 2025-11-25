@@ -250,7 +250,7 @@ function set_windir(){
 function get_computer_name(){
    [ "$comp_name" == "" ] && [ "$system_hive" ] && \
    comp_name=$(reglookup -H -p /ControlSet001/Control/ComputerName/ComputerName/ComputerName "$system_hive" |awk -F',' '{print $3}')
-   [ "$comp_name" == "" ] && comp_name=$(date +'%Y-%m-%d-%H%M') && echo "" && make_red "System Registry Not Found! Cannot Determine Computer Name!" && echo ""
+   [ "$comp_name" == "" ] && comp_name=$(date +'%Y-%m-%d-%H%M%S') && echo ""
    echo "Output Directory:" $comp_name
    #cleanup and create a new new temp file to hold regripper output
    rm /tmp/$comp_name.* 2>/dev/null
@@ -541,10 +541,28 @@ function mount_vhd(){
       done
       sleep 2
       case_dir=$case0_dir
-      ermount -i /"$d" -t ntfs -m /mnt/image_mount -o 32256
-      if [ ! -d "/mnt/image_mount/C" ]; then
+      echo "Attempting to mount $image_path..."
+	  #********************
+	  echo $d sleep 5
+      modprobe nbd && echo "modprobe nbd"
+      qemu-nbd -r -c /dev/nbd1 /"$d"
+      ls /dev/nbd1  && make_green "nbd mount successful!"
+      echo $d
+      sleep 3
+      #***********************
+      for offset in 32256 8704 15872; do
+          echo "Trying offset $offset..."
+          mount -t ntfs -o ro,loop,show_sys_files,streams_interface=windows,offset=$offset /dev/nbd1 /mnt/image_mount 2>/dev/null
+          echo mount -t ntfs -o ro,loop,show_sys_files,streams_interface=windows,offset=$offset /dev/nbd1 /mnt/image_mount
+          sleep 3
+          if [ $? -eq 0 ] && [ -d "/mnt/image_mount/C" ]; then
+              ermount -s
+              return 0
+          fi
+          echo "Offset $offset didn't work, trying next..."
+          umount "$mount_point" >/dev/null 2>&1  # Clean up before next attempt
+      done
         make_red "Mount Failed $d or does image does not contain a KAPE or CyLR image"
-      fi
 }
 
 function mount_zip(){
@@ -582,7 +600,7 @@ function rprocess(){
       start_time=$SECONDS
       set_windir
       comp_name=""
-      get_computer_name  
+      get_computer_name
       case_dir="$case_dir/$comp_name"
       timeline_dir="$case_dir/Timeline"
       create_triage_dir
@@ -966,9 +984,10 @@ function extract_amcache.hve(){
     reglookup-timeline -H  "$amcache_hive" 2>/dev/null|awk -F',' -v a=$comp_name '{print $1",REG,"a",,M... AmCache "$3}' >> $case_dir/Timeline/Registry-Timeline-$comp_name.csv
     z_amcacheparser
   fi
-  if [ -f "$case_dir/Application_Execution/Amcache/Amcache-RegR-$comp_name.csv" ]; then
-    cat "$case_dir/Application_Execution/Amcache/Amcache-RegR-$comp_name.csv" |sed -r 's/(.*)\(/\1- /'|sed -r 's/(.*)\)/\1/'| \
-    awk -F' - ' -v a=$comp_name '{print $3","$2","a}' >> "$case_dir/All_Summary/Amcache-Hashes-$comp_name.csv"
+  if [ -f "$case_dir/Application_Execution/Amcache/RegR-Amcache-$comp_name.csv" ]; then
+    cat "$case_dir/Application_Execution/Amcache/RegR-Amcache-$comp_name.csv" |sed -r 's/(.*)\(/\1- /'|sed -r 's/(.*)\)/\1/'| \
+    awk -F' - ' -v a=$comp_name '{print $3","$2","a}' >> "$case_dir/All_Summary/Amcache-Hashes-$comp_name.csv" && \
+    sed -i '1i Hash,Path,System'  "$case_dir/All_Summary/Amcache-Hashes-$comp_name.csv"
   fi
 }
 
@@ -1719,7 +1738,7 @@ function z_mftecmd(){
   if [ -f "$case_dir/File_System/MFT/MFTECmd_$comp_name.csv" ]; then
     head -n1 $case_dir/File_System/MFT/MFTECmd_$comp_name.csv > $case_dir/File_System/AlternateDataStreams/AlternateDataStreams-$comp_name.csv && \
     cat $case_dir/File_System/MFT/MFTECmd_$comp_name.csv | awk -F, '$14 ~ /^(True)$/{print $0}' >> $case_dir/File_System/AlternateDataStreams/MFTECmd-AlternateDataStreams-$comp_name.csv
-    cat $case_dir/File_System/AlternateDataStreams/MFTECmd-AlternateDataStreams-$comp_name.csv | grep -v "Created0x10.ADS" | \
+    cat $case_dir/File_System/AlternateDataStreams/MFTECmd-AlternateDataStreams-$comp_name.csv | grep -va "Created0x10.ADS" | \
     awk -F"," '{print $20",ADS,comp_name,,FILE Created: "$6"\\"$7}' |sed "s/comp_name/$comp_name/" >> $case_dir/File_System/AlternateDataStreams/AlternateDataStreams-$comp_name.csv
     cat $case_dir/File_System/MFT/MFTECmd_$comp_name.csv | awk -F, '$3 ~ /^(False)$/{print $0}'>> $case_dir/File_System/Deleted_Files/MFTECmd-Unallocated-$comp_name.csv
   fi
