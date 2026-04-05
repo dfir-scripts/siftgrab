@@ -28,7 +28,7 @@ function show_menu(){
     GREEN=`echo "\033[0;32m"`
     NORMAL=`echo "\033[m"`
     RED=`echo "\033[31m"`
-    echo -e "${GREEN} dfir-scripts 2025_11${NORMAL}" 
+    echo -e "${GREEN} dfir-scripts 2026_4${NORMAL}" 
     echo -e "********************************************************"
     echo -e "${GRAY} Mount and Extract Information From Windows Disk Images${NORMAL}"
     echo -e "********************************************************"
@@ -59,7 +59,7 @@ while [ opt != '' ]
            select_parsers
            create_triage_dir
            start_time=$SECONDS
-           out_format=csv
+           out_format=json
            eval "echo Started! "$(date) >> $case_dir/Triage-Timestamp-$comp_name.txt
            [ $parse_all ] && parsers || custom_parsers
            consolidate_timeline
@@ -86,7 +86,7 @@ while [ opt != '' ]
         #Menu Selection: Extract artifact collections from multiple sources (Kape, CyLR) using siftgrab parser collection
         2)clear;
           make_green "Enter path to directory containing Kape or Cylr **VHD or VHDX** files"
-          out_format=csv
+          out_format=json
           mount_dir=/mnt/image_mount/C
           set_rmsource_path
           recurse_source
@@ -126,7 +126,6 @@ while [ opt != '' ]
            get_computer_name
            set_dsource_path
            check_dsource_path
-           set_zimmerman_output
            create_triage_dir
            start_time=$SECONDS
 ########### Zimmeran Tools Artifact Parsers #################
@@ -210,12 +209,6 @@ function check_dsource_path(){
       [ -d "$case_dir" ] && [ "$quit" != "no" ] && clear && show_menu
       mkdir -p $case_dir
       echo "Case Folder =>  $case_dir"
-}
-function set_zimmerman_output(){
-      make_red "SET OUTPUT FORMAT (Default = csv)"
-      echo "Set output format to csv or json"
-      read -e -p "" -i "csv" out_format
-      #grep -Eq csv\|json || make_red "invalid output format.." && sleep 2 && clear && show_menu
 }
 
 #Find "Windows" directory paths
@@ -785,7 +778,7 @@ function shim_cache(){
   if [ -f "$system_hive" ]; then
     cd $regdir
     rip.pl -r $system_hive -p shimcache >> $case_dir/Application_Execution/Shimcache/RegR-AppCompatCache-$comp_name.txt
-    dotnet /opt/zimmermantools/net9/AppCompatCacheParser.dll --csvf shimcache_$comp_name.csv -f $system_hive --$out_format $case_dir/Application_Execution/Shimcache
+    dotnet /opt/zimmermantools/net9/AppCompatCacheParser.dll --csvf shimcache_$comp_name.csv -f $system_hive --csv $case_dir/Application_Execution/Shimcache
   fi
 }
 
@@ -1035,16 +1028,15 @@ function winservices() {
     # Check if the CSV file exists and process it
     if [ -f "$case_dir/Persistence/Services/winservices.py-$comp_name.csv" ]; then
       # Process the CSV file in a single pass
-      awk -F',' '
-        /^[0-9]{4}/ {
-          timestamp = $1
-          cmd = "date -d \"" timestamp "\" +\"%s\" 2>/dev/null"
-          cmd | getline tlntime
-          close(cmd)
-          tlninfo = "||[Service Last Write]: " $2 ";" $3 ";" $5 ";" $7 ";" $8
-          print tlntime "|Svc|" ENVIRON["comp_name"] tlninfo
-        }
-      ' "$case_dir/Persistence/Services/winservices.py-$comp_name.csv" >> "$tempfile"
+      grep -E '^[0-9]{4}' "$case_dir/Persistence/Services/winservices.py-$comp_name.csv" | \
+      awk -F',' -v comp_name="$comp_name" '{
+        timestamp = $1
+        cmd = "date -d \"" timestamp "\" +\"%s\" 2>/dev/null"
+        cmd | getline tlntime
+        close(cmd)
+        tlninfo = "||[Service Last Write]: " $2 ";" $3 ";" $5 ";" $7 ";" $8
+        print tlntime "|Svc|" comp_name tlninfo
+    }' >> "$tempfile"
     fi
 
     # Prepare for Excel conversion
@@ -1092,23 +1084,16 @@ function prefetch_extract() {
       "/opt/venv/bin/python /opt/app/dfir-scripts/prefetchruncounts/prefetchruncounts.py {} -t >> /tmp/prc.txt"
 
     # Process /tmp/prc.txt in a single pass
-    if [ -f "/tmp/prc.txt" ]; then
-      awk -F',' '
-        /^[0-9]{4}/ {
-          timestamp = $1
-          cmd = "date -d \"" timestamp "\" +\"%s\" 2>/dev/null"
-          cmd | getline tlntime
-          close(cmd)
-          if (tlntime != "") {
-            tlninfo = "[Program Execution] PF_File:" $3 " Executable:" $4 " Run Count:" $2 " Volumes" $5
-            print tlntime "|prefetch|" ENVIRON["comp_name"] "||" tlninfo
-          }
-        }
-      ' /tmp/prc.txt >> "$tempfile"
-    fi
-
-    # Clean up temporary file
-    rm -f /tmp/prc.txt
+    [ -f "/tmp/prc.txt" ] && cat /tmp/prc.txt |while read d;
+    do
+      timestamp=$(echo $d| awk -F',' '{print $1}'| \
+      grep -Eo '^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[1-2][0-9]|3[0-1]) (2[0-3]|[01][0-9]):[0-5][0-9]:[0-5][0-9]')
+      [ "$timestamp" != "" ] && tlntime=$(date -d "$timestamp"  +"%s" 2>/dev/null)
+      [ "$tlntime" != "" ] && tlninfo=$(echo $d| \
+      awk -F',' '{print "[Program Execution] PF_File:"$3" Executable:"$4" Run Count:"$2" Volumes"$5}')
+      [ "$timestamp" != "" ] && echo $tlntime"|prefetch|"$comp_name"||"$tlninfo  >> $tempfile
+    done
+    rm /tmp/prc.txt
 
     # Prepare for Excel conversion
     prc_csv="$case_dir/Application_Execution/Prefetch/prefetchruncounts-$comp_name.csv"
@@ -1151,17 +1136,15 @@ function rec_bin(){
   fi
 }
 
-function browser_extract(){
-  mkdir $case_dir/Browser_Activity/$comp_name
-  /opt/app/dfir-scripts/shellscripts/firefox2tln.sh -c $user_dir >> $case_dir/Browser_Activity/Firefox-$comp_name.csv
-  /opt/app/dfir-scripts/shellscripts/firefox2tln.sh $user_dir  >> $tempfile
-  /opt/app/dfir-scripts/shellscripts/chrome2tln.sh -c $user_dir >> $case_dir/Browser_Activity/Chrome-$comp_name.csv
-  /opt/app/dfir-scripts/shellscripts/chrome2tln.sh $user_dir  >> $tempfile
+function browser_extract() {
+  #Use sqlite3 to extract browser artifacts
+  /opt/app/dfir-scripts/shellscripts/browser_extract.sh  $user_dir $comp_name >> "$case_dir/Browser_Activity/Browser-Extract-$comp_name.csv"
+  /opt/app/dfir-scripts/shellscripts/browser_extract.sh -n -t  $user_dir $comp_name >> $tempfile
 
   # Run Hindsight on Users Directory
   echo "Running Hindsight on $user_dir Directory"
-  mkdir -p $case_dir/Browser_Activity/tmp
-  /opt/venv/bin/hindsight.py -i $user_dir -o $case_dir/Browser_Activity/Hindsight -l "$case_dir/Browser_Activity/tmp/hindsight.log" --temp_dir $case_dir/Browser_Activity/tmp
+  mkdir -p $case_dir/Browser_Activity/extra
+  /opt/venv/bin/hindsight.py -i $user_dir -o $case_dir/Browser_Activity/Hindsight -l "$case_dir/Browser_Activity/extra/hindsight.log" --temp_dir $case_dir/Browser_Activity/extra
   [ -f $case_dir/Browser_Activity/Hindsight.xlsx ] && \
   mv $case_dir/Browser_Activity/Hindsight.xlsx $case_dir/Browser_Activity/Hindsight-$comp_name.xlsx
 
@@ -1195,7 +1178,7 @@ function browser_extract(){
   grep -hir "file:///"  $case_dir/Browser_Activity/$comp_name/ese*/* 2>/dev/null| \
   awk -F' ' '{print $33","$34","$10","$11","$12","$13","$14","$15","$16","$17","$18","$19","$20","$21","$22","$23","$24","$25","$26","$27","$28","$29}' >> $case_dir/File_Access/MS-Browser-FileAccess-$comp_name.csv
 }
-
+#**************************************************************************
 function srum_dump(){
   sru_file=$(find $winsysdir/[S,s][R,r][U,u] -maxdepth 2 -type f -iname "srudb.dat" 2>/dev/null )
   if [ -f "$sru_file" ]; then
@@ -1223,6 +1206,25 @@ function bits_parser(){
     /opt/venv/bin/python /opt/app/BitsParser/BitsParser.py -i \
     $mount_dir/ProgramData/Microsoft/Network/Downloader/ --carvedb --carveall 2>/dev/null \
     >> $case_dir/Persistence/BITS/BitsParser.py-$comp_name.json
+  fi
+}
+
+function extract_winactivities(){
+  winactivities_file=$(fd -i -d 6 -t f "ActivitiesCache.db$" $user_dir)
+  if [ -f "$winactivities_file" ]; then
+    make_green "Searching for ActivitiesCache.db"
+    cd $user_dir/
+    fd -i -d 2 -t f "ntuser.dat$" "$user_dir" | \
+    while read ntuser_path;
+    do
+      user_name=$( echo "$ntuser_path"|sed 's/\/$//'|awk -F"/" '{print $(NF-1)}')
+      fd -i -d 3 -t f "ActivitiesCache.db$" "$user_dir/$user_name/AppData/Local/ConnectedDevicesPlatform/" 2>/dev/null | \
+      while read d;
+      do
+        cd $case_dir
+        /opt/zimmermantools/WxTCmd/WxTCmd -f $d --csv $case_dir/Timeline/WinActivitiesCache/$user_name
+      done
+    done
   fi
 }
 
@@ -1255,16 +1257,8 @@ function extract_winactivities(){
       while read d;
       do
         cd $case_dir
-        sqlite3 "$d" ".read /opt/app/kacos2000/WindowsTimeline/WindowsTimeline.sql" 2>/dev/null >> $case_dir/Timeline/WinActivitiesCache/WindowsTimeline.sql-$user_name-$comp_name.csv
         /opt/zimmermantools/WxTCmd/WxTCmd -f $d --csv $case_dir/Timeline/WinActivitiesCache/$user_name
       done
-    done
-    fd -i -t f "WindowsTimeline.sql" "$case_dir/Timeline/WinActivitiesCache/" 3>/dev/null | \
-    while read f;
-    do
-      user_name=$(echo "$f"|sed 's|.*/||' |awk -F'\\-' '{print $2}')
-      cat "$f" 2>/dev/null| \
-      awk -F'|' '{print $3}' | awk -F'\' '{print $NF}'|sort |uniq -c|sort -rn >> $case_dir/All_Summary/WinActivitiesCache-stats-$comp_name.csv
     done
   fi
 }
@@ -1344,11 +1338,12 @@ function run_hayabusa(){
   fi
   
 sigma_output="$case_dir/Sigma_Alerts/Hayabusa-$comp_name.jsonl"
-all_fields_csv="$case_dir/Sigma_Alerts/Hayabusa-Alerts-All-Fields-byDate-$comp_name.csv"
+all_fields_csv="$case_dir/Sigma_Alerts/Hayabusa-Alerts-All-Fields-$comp_name.csv"
 bydate_csv="$case_dir/Sigma_Alerts/Hayabusa-Alerts-byDate-$comp_name.csv"
 
+
 if [ -f "$sigma_output" ]; then
-    make_green "Standby... Processing $comp_name alerts — All-Fields"
+    make_green "Standby... Processing $comp_name Sigma alerts — All-Fields"
     > "$all_fields_csv"
     printf 'Timestamp,EventID,Level,Computer,RuleTitle,Channel,All_Field_Info\n' > "$all_fields_csv"
     jq -r 'if type == "string" then fromjson? else . end
@@ -1363,6 +1358,10 @@ if [ -f "$sigma_output" ]; then
                end
              )
            | join(",")' "$sigma_output" >> "$all_fields_csv"
+    make_green "Standby... Sending $comp_name Sigma alerts to TimeLine"
+    jq -r '[(.Timestamp| sub("\\..*"; "")),"EVTX", .Computer ,.Level, .EventID,  .Channel, .RuleTitle, .RecordID, .RuleFile] | join(",")' "$sigma_output" | \
+    awk -F',' '{print $1","$2","$3",,Level: "$4"; EVTID: "$5"; "$6"; "$7"; RecordID:"$8"; RuleFile:"$9}' >> $timeline_dir/Windows-Event-Timeline-$comp_name.csv
+
 
     make_green "Standby... Creating a summary of Sigma Alerts Count-by-Date"
     printf 'Count,Date,Level,EventID,Computer,RuleTitle,Channel\n' > "$bydate_csv"
@@ -1551,11 +1550,8 @@ function analyze_mft(){
     cat $timeline_dir/TLN/MFT-Timeline-$comp_name.TLN | \
     awk -F'|' '{$1=strftime("%Y-%m-%d %H:%M:%S",$1)}{print $1","$2","$3","$4","$5}' | sed 's/,/;/5g' \
     >> $timeline_dir/MFT-Timeline-$comp_name.csv
-    [ -f timeline_dir/TLN/MFT-Timeline-$comp_name.TLN ] && make_green "Finding interesting files" && \
-    grep -Ei \\.xlsx$\|\\.docx$\|\\.ps1$\|\\.pptx$\|\\.tmp$\|\\.rar$\|\\.bat$\|\\.cmd$\|\\.vba$\|\\.vbe$\|\\.vbs$\|\\.zip$\|\\.dmp$ $timeline_dir/TLN/MFT-Timeline-$comp_name.TLN 2>/dev/null | tee $tempfile;
     [ -f $timeline_dir/MFT-Timeline-$comp_name.csv ] && make_green "Finding Volitile files" && \
     grep -Ei hiberfil.sys$\|pagefile.sys$\|swapfile.sys$\|"\.dmp$" $timeline_dir/MFT-Timeline-$comp_name.csv >> $case_dir/File_System/Volatile/Volatile-$comp_name.csv && \
-    grep -Ei \\.ps1$\|\\.bat$\|\\.cmd$\|\\.vba$\|\\.vbe$\|\\.vbs$ $timeline_dir/Triage-Timeline-$comp_name.csv 2>/dev/null >> $case_dir/Scripting/Scripts-$comp_name.csv;
     tln_csv="$timeline_dir/MFT-Timeline-$comp_name.csv"
     tln_template="/usr/local/src/dfir-scripts/csv2XLsheet/templates/TLNSlicer.xltx"
     tln_sheet="TLN-Slicer"
@@ -1609,10 +1605,9 @@ function cp_registry_vals(){
 
 function consolidate_timeline(){
   if [ -f "$tempfile" ]; then
-    cat $tempfile | sort -rn |uniq >> $timeline_dir/TLN/Triage-Timeline-$comp_name.TLN
-    cat $tempfile |awk -F'|' '{$1=strftime("%Y-%m-%d %H:%M:%S",$1)}{print $1","$2","$3","$4","$5}'|sort -rn | uniq| grep -va ",,,,"| \
+    strings $tempfile | sort -rn |uniq >> $timeline_dir/TLN/Triage-Timeline-$comp_name.TLN
+    strings $tempfile |awk -F'|' '{$1=strftime("%Y-%m-%d %H:%M:%S",$1)}{print $1","$2","$3","$4","$5}'|sort -rn | uniq| grep -va ",,,,"| \
     sed 's/,/;/5g' |tee -a $timeline_dir/Triage-Timeline-$comp_name.csv
-    cat $timeline_dir/Triage-Timeline-$comp_name.csv|grep -ia ",alert," >> $case_dir/Sigma_Alerts/RegRipperAlerts-$comp_name.csv
   fi
   if [ -f "$case_dir/File_System/AlternateDataStreams/AlternateDataStreams-$comp_name.csv" ]; then
     cat $case_dir/File_System/AlternateDataStreams/AlternateDataStreams-$comp_name.csv >> $timeline_dir/Triage-Timeline-$comp_name.csv
@@ -1713,26 +1708,27 @@ function z_lecmd_jlecmd(){
       user_name=$( echo "$ntuser_path"|sed 's/\/$//'|awk -F"/" '{print $(NF-1)}')
       find $user_dir/$user_name -maxdepth 0 -type d |while read d;
       do
-        dotnet /opt/zimmermantools/net9/LECmd.dll --csvf LECmd_$user_name-Recent-$comp_name.csv -d "$d/AppData/Roaming/Microsoft" --$out_format $case_dir/File_Access/LNK/$user_name-$comp_name
-        dotnet /opt/zimmermantools/net9/LECmd.dll --csvf LECmd_$user_name-Desktop-$comp_name.csv -d "$d/Desktop" --$out_format $case_dir/File_Access/LNK/$user_name-$comp_name
-        dotnet /opt/zimmermantools/net9/LECmd.dll --csvf LECmd_$user_name-Downloads-$comp_name.csv -d "$d/Downloads" --$out_format $case_dir/File_Access/LNK/$user_name-$comp_name
-        dotnet /opt/zimmermantools/net9/LECmd.dll --csvf LECmd_$user_name-Documents-$comp_name.csv -d "$d/Documents" --$out_format $case_dir/File_Access/LNK/$user_name-$comp_name
-        dotnet /opt/zimmermantools/net9/JLECmd.dll --csvf JLECmd_$user_name-$comp_name.csv -d "$d/AppData/Roaming/Microsoft/Windows/Recent" --$out_format $case_dir/Application_Execution/Jumplist/$user_name-$comp_name
+        dotnet /opt/zimmermantools/net9/LECmd.dll --csvf LECmd_$user_name-Recent-$comp_name.csv -d "$d/AppData/Roaming/Microsoft" --csv $case_dir/File_Access/LNK/$user_name-$comp_name
+        dotnet /opt/zimmermantools/net9/LECmd.dll --csvf LECmd_$user_name-Desktop-$comp_name.csv -d "$d/Desktop" --csv $case_dir/File_Access/LNK/$user_name-$comp_name
+        dotnet /opt/zimmermantools/net9/LECmd.dll --csvf LECmd_$user_name-Downloads-$comp_name.csv -d "$d/Downloads" --csv $case_dir/File_Access/LNK/$user_name-$comp_name
+        dotnet /opt/zimmermantools/net9/LECmd.dll --csvf LECmd_$user_name-Documents-$comp_name.csv -d "$d/Documents" --csv $case_dir/File_Access/LNK/$user_name-$comp_name
+        dotnet /opt/zimmermantools/net9/JLECmd.dll --csvf JLECmd_$user_name-$comp_name.csv -d "$d/AppData/Roaming/Microsoft/Windows/Recent" --csv $case_dir/Application_Execution/Jumplist/$user_name-$comp_name
       done
     done
   find $all_users/Microsoft/Windows/ -maxdepth 0 -type d |while read d;
   do
-    dotnet /opt/zimmermantools/net9/LECmd.dll --csvf LECmd_AllUsers-$comp_name.csv -d "$d" --$out_format $case_dir/File_Access/LNK/AllUsers-$comp_name
-    dotnet /opt/zimmermantools/net9/JLECmd.dll --csvf JLECmd_AllUsers-$comp_name.csv -d "$d" --$out_format $case_dir/Application_Execution/Jumplist/AllUsers-$comp_name
+    dotnet /opt/zimmermantools/net9/LECmd.dll --csvf LECmd_AllUsers-$comp_name.csv -d "$d" --csv $case_dir/File_Access/LNK/AllUsers-$comp_name
+    dotnet /opt/zimmermantools/net9/JLECmd.dll --csvf JLECmd_AllUsers-$comp_name.csv -d "$d" --csv $case_dir/Application_Execution/Jumplist/AllUsers-$comp_name
   done
-  dotnet /opt/zimmermantools/net9/LECmd.dll --csvf LECmd_Public.csv -d "$user_dir/Public" --$out_format $case_dir/File_Access/LNK/Public-$comp_name
+  dotnet /opt/zimmermantools/net9/LECmd.dll --jsonf LECmd_Public.csv -d "$user_dir/Public" --csv $case_dir/File_Access/LNK/Public-$comp_name
 }
 #mftparser
 function z_mftecmd(){
   if [ -f "$mount_dir/\$MFT" ]; then
     cd $mount_dir
     [ -f "\$MFT" ] && \
-    dotnet /opt/zimmermantools/net9/MFTECmd.dll --csvf MFTECmd_$comp_name.csv -f \$MFT --$out_format $case_dir/File_System/MFT
+    dotnet /opt/zimmermantools/net9/MFTECmd.dll --jsonf MFTECmd_$comp_name.json -f \$MFT --$out_format $case_dir/File_System/MFT
+    #dotnet /opt/zimmermantools/net9/MFTECmd.dll -f \$MFT --dr --csv $case_dir/File_System/MFT/Resident_Files
   fi
   #Copy ADS and Unallocated files
   if [ -f "$case_dir/File_System/MFT/MFTECmd_$comp_name.csv" ]; then
@@ -1746,10 +1742,11 @@ function z_mftecmd(){
 #Extract $USNJRNL:$J using mftecmd
 function parse_usn(){
   cd $mount_dir
-  if [ -f "\$Extend/\$UsnJrnl:\$J" ]; then
-    cd $mount_dir
-    [ -f "\$MFT" ] && \
-    dotnet /opt/zimmermantools/net9/MFTECmd.dll --csvf USNJRNL_$comp_name.csv -m \$MFT -f \$Extend/\$UsnJrnl:\$J --$out_format $case_dir/File_System/USNJRNL
+  if [ -f \$Extend/\$UsnJrnl*\$J ]; then
+     [ -f "\$MFT" ]
+     
+    dotnet /opt/zimmermantools/net9/MFTECmd.dll --jsonf USNJRNL_$comp_name.json -m \$MFT -f \$Extend/\$UsnJrnl*\$J --$out_format $case_dir/File_System/USNJRNL
+  
   fi
 }
 
@@ -1758,13 +1755,13 @@ function parse_usn(){
 function z_rbcmd(){
   if [ -d "$mount_dir/\$Recycle.Bin" ]; then
     cd $mount_dir
-    dotnet /opt/zimmermantools/net9/RBCmd.dll --csvf RBCmd_$comp_name.csv -d '$Recycle.Bin/' --csv $case_dir/File_System/Deleted_Files 2>/dev/null
+    dotnet /opt/zimmermantools/net9/RBCmd.dll --csvf RBCmd_$comp_name.json -d '$Recycle.Bin/' --csv $case_dir/File_System/Deleted_Files 2>/dev/null
   fi
 }
 #recentfilecacheparser
 function z_recentfilecacheparser(){
 recent_file_cache="$windir/AppCompat/Programs/RecentFileCache.bcf" 
-dotnet /opt/zimmermantools/net9/RecentFileCacheParser.dll --csvf RFCmd_$comp_name.csv -f "$recent_file_cache" --$out_format $case_dir/RecentFileCache
+dotnet /opt/zimmermantools/net9/RecentFileCacheParser.dll --jsonf RFCmd_$comp_name.json -f "$recent_file_cache" --$out_format $case_dir/RecentFileCache
 }
 #rla merged dirty registry hives
 function z_rla(){
@@ -1780,18 +1777,20 @@ function z_rla(){
 }
 
 #sbecmd  shellbags
-function z_sbecmd(){
-  fd -i -d 2 -t f "ntuser.dat$" "$user_dir" 2>/dev/null |\
-  while read ntuser_path;
-  do
-    user_name=$( echo "$ntuser_path"|sed 's/\/$//'|awk -F"/" '{print $(NF-1)}')
-    fd -d 1 -i -t d windows$ $user_dir/$user_name/AppData/Local/Microsoft/ | \
-    while read d; 
-    do
-      dotnet /opt/zimmermantools/net9/SBECmd.dll --csvf SBECmd_$user_name-$comp_name.csv -d "$d" --$out_format $case_dir/File_Access/ShellBags/SBECmd-$user_name-$comp_name
-    done
+function z_sbecmd() {
+  fd -i -d 2 -t f "ntuser.dat$" "$user_dir" 2>/dev/null | while read ntuser_path; do
+    user_name=$(dirname "$ntuser_path" | awk -F"/" '{print $(NF-1)}')
+    
+    # Check if UsrClass.dat exists at the given path
+   if [ $(fd -d 1 -i -t f "UsrClass.dat$" "$user_dir/$user_name/AppData/Local/Microsoft/Windows" 2>/dev/null | wc -l) -gt 0 ]; then
+      # Use echo instead of dirname to print the directory
+      echo "$user_dir/$user_name/AppData/Local/Microsoft/Windows" | while read dir; do
+        dotnet /opt/zimmermantools/net9/SBECmd.dll --jsonf "SBECmd_$user_name-$comp_name.json" -d "$dir" --json "$case_dir/File_Access/ShellBags/SBECmd-$user_name-$comp_name"
+      done
+    fi
   done
- }
+}
+ 
 #Winactivities
 function z_wxtcmd(){
   cd /opt/zimmermantools/WxTCmd/
