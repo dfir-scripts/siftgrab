@@ -1312,7 +1312,7 @@ function evtx_dump_json(){
     do
       evtx_file=$(basename "$d")
       echo "Dumping $evtx_file to jsonl"
-      time evtx_dump "$d" --validate-checksums -t 1 -o jsonl -f "$case_dir/WindowsEventLogs/evtx_dump_$comp_name/$evtx_file-$comp_name.jsonl"
+      time evtx_dump "$d" --validate-checksums -t 1 -o jsonl -f "$case_dir/WindowsEventLogs/evtx_dump_$comp_name/$evtx_file-$comp_name.jsonl" --no-confirm-overwrite
     done
   fi
 }
@@ -1569,7 +1569,7 @@ function analyze_mft(){
 function dump_mft(){
   if [ -f "$mount_dir/\$MFT" ]; then
     make_green "Extracting MFT (MFT_Dump)"
-    mft_dump \$MFT -o csv -f $case_dir/File_System/MFT/MFT_Dump-$comp_name.csv
+    mft_dump \$MFT -o csv -f $case_dir/File_System/MFT/MFT_Dump-$comp_name.csv --no-confirm-overwrite
     #Find Unallocated files
     make_green "Locating Unallocated files"
     cat $case_dir/File_System/MFT/MFT_Dump-$comp_name.csv| \
