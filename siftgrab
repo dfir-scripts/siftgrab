@@ -1,4 +1,5 @@
 #!/bin/bash
+set +o noclobber
 #set time to UTC
 export TZ='Etc/UTC'
 
