@@ -1720,7 +1720,7 @@ function z_lecmd_jlecmd(){
     dotnet /opt/zimmermantools/net9/LECmd.dll --csvf LECmd_AllUsers-$comp_name.csv -d "$d" --csv $case_dir/File_Access/LNK/AllUsers-$comp_name
     dotnet /opt/zimmermantools/net9/JLECmd.dll --csvf JLECmd_AllUsers-$comp_name.csv -d "$d" --csv $case_dir/Application_Execution/Jumplist/AllUsers-$comp_name
   done
-  dotnet /opt/zimmermantools/net9/LECmd.dll --jsonf LECmd_Public.csv -d "$user_dir/Public" --csv $case_dir/File_Access/LNK/Public-$comp_name
+  dotnet /opt/zimmermantools/net9/LECmd.dll --csvf LECmd_Public.csv -d "$user_dir/Public" --csv $case_dir/File_Access/LNK/Public-$comp_name
 }
 #mftparser
 function z_mftecmd(){
